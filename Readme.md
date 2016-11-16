@@ -8,7 +8,8 @@
 ## Architecture
 
  - n Services
- - n Linkers (public IPs)
+ - n Linker (public IPs, cannot add new linkers after initialization)
  - n Clients
 
 If a linker, service or client does not reply after the timeout, it is considered as dead.
+
