@@ -1,5 +1,7 @@
 package util;
 
+import java.net.DatagramPacket;
+
 /**
  * Represent a network point with a specific host and port
  */
@@ -12,19 +14,24 @@ public class Machine {
         this.port = port;
     }
 
-    public String getHost() {
-        return host;
+    public Machine(DatagramPacket packet) {
+        this.host = packet.getAddress().getHostName();
+        this.port = packet.getPort();
     }
 
-    public void setHost(String host) {
-        this.host = host;
+    public String getHost() {
+        return host;
     }
 
     public int getPort() {
         return port;
     }
 
-    public void setPort(int port) {
-        this.port = port;
+    @Override
+    public String toString() {
+        return "Machine{" +
+                "host='" + host + '\'' +
+                ", port=" + port +
+                '}';
     }
 }
