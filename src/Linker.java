@@ -56,14 +56,20 @@ public class Linker {
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case REGISTER:
-                    System.out.println(">>> REGISTER");
+                case REGISTER_SERVICE:
+                    System.out.println(">>> REGISTER_SERVICE");
 
                     // TODO check for doubles
                     services.add(new Machine(packet));
 
                     System.out.println("[i] Services:");
                     printServices();
+
+                    break;
+                case ACK_TIME:
+                    System.out.println(">>> Client wants time service");
+
+                    // TODO return Time service address
 
                     break;
                 default:

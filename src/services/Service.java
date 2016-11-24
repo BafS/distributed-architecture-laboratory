@@ -40,7 +40,7 @@ public abstract class Service {
         // Use a random linker in the list
         Machine linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] buff = new Message(MessageType.REGISTER).toByteArray();
+        byte[] buff = new Message(MessageType.REGISTER_SERVICE).toByteArray();
 
         InetAddress address = InetAddress.getByName(linker.getHost());
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
@@ -50,7 +50,6 @@ public abstract class Service {
         ds.close();
 
         return ds.getPort();
-//        ds.send(new DatagramPacket(new MessageServiceRegistration(type, host, port)));
     }
 
     /**
@@ -80,8 +79,8 @@ public abstract class Service {
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case TIME:
-                    System.out.println(">>> ASK FOR THE SERVICE RESPONSE");
+                case ACK_TIME:
+                    System.out.println(">>> ASK FOR THE TIME SERVICE");
                     type = this.getServiceType();
                     buff = this.getResponse();
                     message = new Message(type, data);
@@ -118,7 +117,10 @@ public abstract class Service {
     public static void main(String[] args) {
         System.out.println("- Service -");
 
+        // TODO -> split main in each service ?
+
         if (args.length < 2) {
+//            System.out.println("Usage: java service <type> <port> <list of linkers>");
             System.out.println("Usage: java service <type> <list of linkers>");
             return;
         }

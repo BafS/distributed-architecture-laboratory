@@ -2,8 +2,11 @@ package messages;
 
 public enum MessageType {
 
-    REGISTER((byte) 0x00),
-    TIME((byte) 0x10);
+    REGISTER_SERVICE((byte) 0x00),
+    REGISTER_CLIENT((byte) 0x01),
+    ACK_TIME((byte) 0x10),
+    RESPONSE_TIME((byte) 0x20),
+    ;
     //ACK((byte) 3, Byte.BYTES);
 
     private byte type;
