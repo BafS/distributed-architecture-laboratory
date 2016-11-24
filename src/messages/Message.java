@@ -5,19 +5,10 @@ import java.io.IOException;
 
 /**
  * Message to communicate between instances on the network.
- *
- * Types [WIP]
- *  1
- *  2
  */
 public class Message {
     private byte type;
     private byte[] message;
-
-    public static final byte REGISTER = 0x0;
-
-    public static final byte TIME = 0x10;
-//    public static final byte SUM = 0x11;
 
     public Message(byte messageType, byte[] message) {
         this.type = messageType;
@@ -29,13 +20,13 @@ public class Message {
         this.message = null;
     }
 
-    public byte getType() {
-        return type;
+    public Message(MessageType messageType, byte[] message) {
+        this(messageType.getType(), message);
     }
 
-//    public MessageType getMessageType() {
-//        return type;
-//    }
+    public Message(MessageType messageType) {
+        this(messageType.getType());
+    }
 
     public byte[] toByteArray() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -48,5 +39,9 @@ public class Message {
 
     public byte[] getMessage() {
         return message;
+    }
+
+    public MessageType getMessageType() {
+        return MessageType.fromByte(type);
     }
 }

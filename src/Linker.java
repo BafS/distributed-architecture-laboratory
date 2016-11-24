@@ -8,11 +8,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static messages.Message.REGISTER;
-
 /**
  * Linker are the bridge between clients and service
- * because linkers IPs are known from the clients and the services.
+ * Linkers addresses are known from the clients and the services.
  *
  * Linker communicate to clients with messages (Message)
  *
@@ -25,8 +23,6 @@ public class Linker {
     private final int PORT;
 
     private List<Machine> services = new ArrayList<>();
-
-    private List<Machine> clients = new ArrayList<>();
 
     public Linker(final int port) {
         PORT = port;
@@ -59,7 +55,7 @@ public class Linker {
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
             System.out.println("(message: " + message.getMessage() + ")");
 
-            switch (message.getType()) {
+            switch (message.getMessageType()) {
                 case REGISTER:
                     System.out.println(">>> REGISTER");
 

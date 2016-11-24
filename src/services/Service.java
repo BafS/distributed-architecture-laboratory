@@ -1,6 +1,7 @@
 package services;
 
 import messages.Message;
+import messages.MessageType;
 import util.Machine;
 
 import java.io.IOException;
@@ -10,8 +11,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static messages.Message.TIME;
 
 /**
  * At initialization, a service will register himself to a random linker (sending him the host,
@@ -41,7 +40,7 @@ public abstract class Service {
         // Use a random linker in the list
         Machine linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] buff = new Message(Message.REGISTER).toByteArray();
+        byte[] buff = new Message(MessageType.REGISTER).toByteArray();
 
         InetAddress address = InetAddress.getByName(linker.getHost());
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
@@ -80,7 +79,7 @@ public abstract class Service {
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
             System.out.println("(message: " + message.getMessage() + ")");
 
-            switch (message.getType()) {
+            switch (message.getMessageType()) {
                 case TIME:
                     System.out.println(">>> ASK FOR THE SERVICE RESPONSE");
                     type = this.getServiceType();
