@@ -3,6 +3,7 @@ package services;
 import messages.Message;
 import messages.MessageType;
 import util.Machine;
+import util.MachineType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -40,7 +41,8 @@ public abstract class Service {
         // Use a random linker in the list
         Machine linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] buff = new Message(MessageType.REGISTER_SERVICE).toByteArray();
+        // TODO
+        byte[] buff = new Message(MessageType.REGISTER_SERVICE_TIME).toByteArray();
 
         InetAddress address = InetAddress.getByName(linker.getHost());
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
@@ -131,7 +133,7 @@ public abstract class Service {
         // 127.0.0.1:8080,127.0.0.1:8090
         for (String info : args[1].split(",")) {
             String[] token = info.split(":");
-            linkers.add(new Machine(token[0], Integer.parseInt(token[1])));
+            linkers.add(new Machine(MachineType.LINKER, token[0], Integer.parseInt(token[1])));
         }
 
         Service service;

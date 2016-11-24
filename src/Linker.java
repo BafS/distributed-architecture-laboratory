@@ -1,5 +1,6 @@
 import messages.Message;
 import util.Machine;
+import util.MachineType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -7,6 +8,7 @@ import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Linker are the bridge between clients and service
@@ -56,11 +58,11 @@ public class Linker {
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case REGISTER_SERVICE:
-                    System.out.println(">>> REGISTER_SERVICE");
+                case REGISTER_SERVICE_REPLY:
+                    System.out.println(">>> REGISTER_SERVICE_REPLY");
 
                     // TODO check for doubles
-                    services.add(new Machine(packet));
+                    services.add(new Machine(MachineType.SERVICE_REPLY, packet));
 
                     System.out.println("[i] Services:");
                     printServices();
@@ -79,6 +81,10 @@ public class Linker {
             // Reset the length of the packet before reuse
             packet.setLength(buff.length);
         }
+    }
+
+    private Optional<Machine> getService(final String type) {
+        return this.services.stream().parallel().filter(m -> m.getType().getStringType().equals(type)).findAny();
     }
 
     private void printServices() {

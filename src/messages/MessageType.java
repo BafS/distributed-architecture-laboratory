@@ -2,7 +2,8 @@ package messages;
 
 public enum MessageType {
 
-    REGISTER_SERVICE((byte) 0x00),
+    REGISTER_SERVICE_REPLY((byte) 0x00),
+    REGISTER_SERVICE_TIME((byte) 0x01),
     REGISTER_CLIENT((byte) 0x01),
     ACK_SERVICE((byte) 0x8),
     ACK_TIME((byte) 0x10),
@@ -24,7 +25,7 @@ public enum MessageType {
 
     public static MessageType fromByte(byte type) {
         for (MessageType messageType : MessageType.values()) {
-            if (type == messageType.getType()) {
+            if (type == messageType.type) {
                 return messageType;
             }
         }

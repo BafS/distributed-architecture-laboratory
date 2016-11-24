@@ -1,12 +1,14 @@
 import messages.Message;
 import messages.MessageType;
 import util.Machine;
+import util.MachineType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -60,14 +62,23 @@ public class Client {
         InetAddress address = InetAddress.getByName(linker.getHost());
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
 
-        DatagramSocket ds = new DatagramSocket(PORT);
-        ds.send(packet);
-        ds.close();
+        DatagramSocket socket = new DatagramSocket(PORT);
+        socket.send(packet);
+        socket.close();
 
-        // Get reponse
+        // Get response
+        while (true) {
+            socket.receive(packet);
 
+            byte type = buff[0];
+            byte[] data = Arrays.copyOfRange(buff, 1, buff.length);
+            Message message = new Message(type, data);
+        }
 
-        return ds.getPort();
+        // Unreachable but should be used
+        // socket.close();
+
+//        return socket.getPort();
     }
 
     // https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console
@@ -110,7 +121,7 @@ public class Client {
         // 127.0.0.1:8080,127.0.0.1:8090
         for (String info : args[2].split(",")) {
             String[] token = info.split(":");
-            linkers.add(new Machine(token[0], Integer.parseInt(token[1])));
+            linkers.add(new Machine(MachineType.CLIENT, token[0], Integer.parseInt(token[1])));
         }
 
         Client client = new Client(linkers, type, port);
