@@ -1,6 +1,6 @@
 package services;
 
-import messages.Message;
+import messages.MessageType;
 import util.Machine;
 
 import java.util.List;
@@ -11,12 +11,12 @@ public class ServiceReply extends Service {
     }
 
     @Override
-    byte[] getResponse() {
-        return null; // TODO
+    byte[] getResponse(byte[] message) {
+        return new byte[0];
     }
 
     @Override
-    byte getServiceType() {
-        return Message.TIME; // TODO
+    MessageType getServiceType() {
+        return MessageType.RESPONSE_REPLY;
     }
 }

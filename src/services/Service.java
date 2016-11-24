@@ -79,11 +79,11 @@ public abstract class Service {
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case ACK_TIME:
-                    System.out.println(">>> ASK FOR THE TIME SERVICE");
-                    type = this.getServiceType();
-                    buff = this.getResponse();
-                    message = new Message(type, data);
+                case ACK_SERVICE:
+                    System.out.println(">>> ASK FOR THE SERVICE");
+                    type = this.getServiceType().getType();
+                    buff = this.getResponse(data); // polymorphism
+                    message = new Message(type, buff);
                     sendMessage(packet, message);
                     break;
                 default:
@@ -95,9 +95,9 @@ public abstract class Service {
         }
     }
 
-    abstract byte[] getResponse();
+    abstract byte[] getResponse(final byte[] message);
 
-    abstract byte getServiceType();
+    abstract MessageType getServiceType();
 
     /**
      * Send a message

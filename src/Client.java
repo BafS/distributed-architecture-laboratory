@@ -17,8 +17,8 @@ import java.util.Scanner;
  * port of the service.
  * If the service does not reply, the client will ask again, randomly, a linker.
  *
- * 1. Ask a random linker the address of a specific service
- * 2a. if OK
+ * 1. Ask a random linker the address of a specific service [ACK_SERVICE-TYPE]
+ * 2a. if OK [ACK_SERVICE | message]
  * 2b. if Error -> goto 1.
  */
 public class Client {
@@ -29,6 +29,8 @@ public class Client {
     private final String type;
 
     private List<Machine> linkers;
+
+    private Machine service;
 
     public Client(List<Machine> linkers, final String type, final int port) {
         this.linkers = linkers;
@@ -61,6 +63,9 @@ public class Client {
         DatagramSocket ds = new DatagramSocket(PORT);
         ds.send(packet);
         ds.close();
+
+        // Get reponse
+
 
         return ds.getPort();
     }

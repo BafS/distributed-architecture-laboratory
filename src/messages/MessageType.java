@@ -4,8 +4,11 @@ public enum MessageType {
 
     REGISTER_SERVICE((byte) 0x00),
     REGISTER_CLIENT((byte) 0x01),
+    ACK_SERVICE((byte) 0x8),
     ACK_TIME((byte) 0x10),
+    ACK_REPLY((byte) 0x11),
     RESPONSE_TIME((byte) 0x20),
+    RESPONSE_REPLY((byte) 0x20),
     ;
     //ACK((byte) 3, Byte.BYTES);
 

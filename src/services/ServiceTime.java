@@ -1,6 +1,6 @@
 package services;
 
-import messages.Message;
+import messages.MessageType;
 import util.Machine;
 
 import java.nio.ByteBuffer;
@@ -12,8 +12,8 @@ public class ServiceTime extends Service {
     }
 
     @Override
-    public byte getServiceType() {
-        return Message.TIME;
+    public MessageType getServiceType() {
+        return MessageType.RESPONSE_TIME;
     }
 
     /**
@@ -22,7 +22,7 @@ public class ServiceTime extends Service {
      * @return byte[]
      */
     @Override
-    public byte[] getResponse() {
+    byte[] getResponse(byte[] message) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(System.nanoTime());
         return buffer.array();
