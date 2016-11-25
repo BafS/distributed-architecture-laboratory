@@ -1,7 +1,7 @@
 package services;
 
-import messages.Message;
 import messages.MessageType;
+import messages.MessageUDP;
 import util.Machine;
 import util.MachineType;
 
@@ -10,7 +10,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,30 +40,38 @@ public abstract class Service {
         // Use a random linker in the list
         Machine linker = linkers.get((int) Math.random() * linkers.size());
 
-        // TODO
-        byte[] buff = new Message(MessageType.REGISTER_SERVICE_TIME).toByteArray();
+        MessageUDP message = new MessageUDP(
+                MessageType.REGISTER_SERVICE,
+                this.getServiceType(),
+                new byte[]{this.getServiceType().getType()}
+        );
+
+        System.out.println(message);
+
+        byte[] buff = message.toByteArray();
 
         InetAddress address = InetAddress.getByName(linker.getHost());
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
 
-        DatagramSocket ds = new DatagramSocket(PORT);
-        ds.send(packet);
-        ds.close();
+        DatagramSocket socket = new DatagramSocket(PORT);
 
-        return ds.getPort();
+        socket.send(packet);
+        socket.close();
+
+        return socket.getPort();
     }
 
     /**
      * Listen for incoming message
      */
-    void listen() throws IOException {
+    void listen() throws IOException, ClassNotFoundException {
         DatagramSocket socket = new DatagramSocket(PORT);
 
         byte[] buff = new byte[Long.BYTES];
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
-        Message message;
+        MessageUDP message;
 
         System.out.println("[i] Listen for new messages...");
 
@@ -72,21 +79,22 @@ public abstract class Service {
         while (true) {
             socket.receive(packet);
 
-            byte type = buff[0];
-            byte[] data = Arrays.copyOfRange(buff, 1, buff.length);
-            message = new Message(type, data);
+            message = MessageUDP.fromByteArray(buff);
 
             // DEBUG
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case ACK_SERVICE:
+                case ACK:
                     System.out.println(">>> ASK FOR THE SERVICE");
-                    type = this.getServiceType().getType();
-                    buff = this.getResponse(data); // polymorphism
-                    message = new Message(type, buff);
-                    sendMessage(packet, message);
+
+//                    Service concretService = getServiceObject();
+//                    this.get
+
+                    buff = this.getResponse(message.getMessage()); // polymorphism
+//                    message = new MessageUDP(type, buff);
+//                    sendMessage(packet, message);
                     break;
                 default:
                     System.out.println(">>> Unknown message");
@@ -99,7 +107,7 @@ public abstract class Service {
 
     abstract byte[] getResponse(final byte[] message);
 
-    abstract MessageType getServiceType();
+    abstract MachineType getServiceType();
 
     /**
      * Send a message
@@ -107,7 +115,7 @@ public abstract class Service {
      * @param packet
      * @param message
      */
-    private void sendMessage(DatagramPacket packet, Message message) throws IOException {
+    private void sendMessage(DatagramPacket packet, MessageUDP message) throws IOException {
         DatagramPacket packetToSend = new DatagramPacket(
                 message.getMessage(), message.getMessage().length, packet.getAddress(), packet.getPort());
 
@@ -144,6 +152,8 @@ public abstract class Service {
             int port = service.subscribeToLinker();
             service.listen();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }

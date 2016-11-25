@@ -1,14 +1,11 @@
-import messages.Message;
-import util.Machine;
+import messages.MessageType;
+import messages.MessageUDP;
 import util.MachineType;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.net.*;
+import java.util.*;
+
 
 /**
  * Linker are the bridge between clients and service
@@ -22,9 +19,13 @@ import java.util.Optional;
  */
 public class Linker {
 
-    private final int PORT;
+    private int PORT;
 
-    private List<Machine> services = new ArrayList<>();
+//    private List<Machine> services = new ArrayList<>();
+
+//    private Map<MachineType, Set<Machine>> services2 = new HashMap<>();
+
+    private Map<MachineType, List<InetSocketAddress>> services3 = new HashMap<>();
 
     public Linker(final int port) {
         PORT = port;
@@ -33,15 +34,23 @@ public class Linker {
 //    private void onRegistration(Message message) {
 //    }
 
+//    private void handleClients(MachineType) {
+//
+//    }
+//
+//    private void handleService() {
+//
+//    }
+
     /**
      * Listen for new messages from clients or services
      *
      * @throws IOException
      */
-    public void listen() throws IOException {
+    public void listen() throws IOException, ClassNotFoundException {
         DatagramSocket socket = new DatagramSocket(PORT);
 
-        byte[] buff = new byte[Long.BYTES];
+        byte[] buff = new byte[512];
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
@@ -49,29 +58,80 @@ public class Linker {
         while (true) {
             socket.receive(packet);
 
-            byte type = buff[0];
-            byte[] data = Arrays.copyOfRange(buff, 1, buff.length);
-            Message message = new Message(type, data);
+            MessageUDP message = MessageUDP.fromByteArray(buff);
+            MachineType machineType = message.getMachineType();
 
             // DEBUG
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
             System.out.println("(message: " + message.getMessage() + ")");
 
             switch (message.getMessageType()) {
-                case REGISTER_SERVICE_REPLY:
-                    System.out.println(">>> REGISTER_SERVICE_REPLY");
+                case REGISTER_SERVICE:
+                    System.out.println(">>> REGISTER SERVICE");
+
+                    if (message.getMachineType().equals(MachineType.SERVICE_TIME)) {
+                        System.out.println("-> TIME");
+                    }
+                    if (message.getMachineType().equals(MachineType.SERVICE_REPLY)) {
+                        System.out.println("-> REPLY");
+                    } else {
+                        System.out.println("UNKNOWN MESSAGE TYPE");
+                    }
 
                     // TODO check for doubles
-                    services.add(new Machine(MachineType.SERVICE_REPLY, packet));
+//                    services.add(new Machine(MachineType.SERVICE_REPLY, packet));
+
+                    if (services3.isEmpty() || services3.get(machineType).isEmpty()) {
+                        ArrayList<InetSocketAddress> list = new ArrayList<>();
+                        services3.put(machineType, list);
+                    }
+
+//                        HashSet<InetSocketAddress> set = new HashSet<>(packet.getSocketAddress());
+//                        services3.put(machineType, set);
+//                        services3.get(machineType).add(packet.getSocketAddress());
+                    services3.get(machineType).add(new InetSocketAddress(
+                            packet.getAddress(),
+                            packet.getPort()
+                    ));
 
                     System.out.println("[i] Services:");
                     printServices();
 
                     break;
-                case ACK_TIME:
-                    System.out.println(">>> Client wants time service");
+                case ASK_SERVICE:
+                    System.out.println(">>> A Client asked for a service");
 
-                    // TODO return Time service address
+                    if (machineType == MachineType.SERVICE_TIME) {
+                        System.out.println("-> TIME");
+
+                        if (!services3.isEmpty()) {
+                            System.out.println("A" + services3.size());
+
+                            if (services3.containsKey(MachineType.SERVICE_TIME)) {
+                                System.out.println("B");
+
+                                packet.setLength(buff.length);
+
+                                int index = new Random().nextInt(services3.get(MachineType.SERVICE_TIME).size());
+                                System.out.println("C" + index);
+                                InetSocketAddress randomService = services3.get(MachineType.SERVICE_TIME).get(index);
+
+                                buff = new MessageUDP(
+                                        MessageType.RESPONSE,
+                                        MachineType.LINKER,
+                                        randomService.getAddress().getAddress()
+                                ).toByteArray();
+
+                                packet.setData(buff);
+
+                                socket.send(packet);
+                                socket.close();
+
+                                System.out.println("Send machine to client");
+                            }
+                        }
+
+                    }
 
                     break;
                 default:
@@ -83,12 +143,22 @@ public class Linker {
         }
     }
 
-    private Optional<Machine> getService(final String type) {
-        return this.services.stream().parallel().filter(m -> m.getType().getStringType().equals(type)).findAny();
+    private void send(DatagramPacket packet, MessageUDP m) throws IOException {
+        byte[] buff = m.toByteArray();
+
+        packet.setLength(buff.length);
+
+        DatagramSocket socket = new DatagramSocket(PORT);
+        socket.send(packet);
+        socket.close();
     }
 
+//    private Optional<Machine> getService(final MachineType type) {
+//        return this.services.stream().parallel().filter(m -> m.getMachineType() == type).findAny();
+//    }
+
     private void printServices() {
-        services.forEach(System.out::println);
+        services3.forEach((m, a) -> System.out.println(a));
     }
 
     /**
@@ -110,6 +180,8 @@ public class Linker {
             Linker linker = new Linker(port);
             linker.listen();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }

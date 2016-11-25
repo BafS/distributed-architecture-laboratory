@@ -1,7 +1,7 @@
 package services;
 
-import messages.MessageType;
 import util.Machine;
+import util.MachineType;
 
 import java.util.List;
 
@@ -16,7 +16,12 @@ public class ServiceReply extends Service {
     }
 
     @Override
-    MessageType getServiceType() {
-        return MessageType.RESPONSE_REPLY;
+    MachineType getServiceType() {
+        return MachineType.SERVICE_REPLY;
+    }
+
+    @Override
+    Service getServiceObject() {
+        return this;
     }
 }

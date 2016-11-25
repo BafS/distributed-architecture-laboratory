@@ -1,6 +1,8 @@
 package util;
 
-import java.net.DatagramPacket;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Represent a network point with a specific host and port
@@ -17,12 +19,6 @@ public class Machine {
         this.port = port;
     }
 
-    public Machine(MachineType type, DatagramPacket packet) {
-        this.type = type;
-        this.host = packet.getAddress().getHostName();
-        this.port = packet.getPort();
-    }
-
     public String getHost() {
         return host;
     }
@@ -31,8 +27,24 @@ public class Machine {
         return port;
     }
 
-    public MachineType getType() {
+    public MachineType getMachineType() {
         return type;
+    }
+
+    public static Machine fromByteArray(final byte[] machineBytes) {
+        byte port = machineBytes[0];
+        byte[] data = Arrays.copyOfRange(machineBytes, 1, machineBytes.length);
+
+        return new Machine(null, data.toString(), (int) port);
+    }
+
+    public byte[] toByteArray() throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputStream.write(port);
+        outputStream.write(host.getBytes());
+
+
+        return outputStream.toByteArray();
     }
 
     @Override
@@ -43,4 +55,5 @@ public class Machine {
                 ", port=" + port +
                 '}';
     }
+
 }

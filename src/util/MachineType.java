@@ -2,36 +2,35 @@ package util;
 
 public enum MachineType {
 
-    CLIENT("client"),
-    LINKER("linker"),
-    SERVICE_TIME("service_time"),
-    SERVICE_REPLY("service_reply")
+    CLIENT((byte) 0x00),
+    LINKER((byte) 0x01),
+    SERVICE_TIME((byte) 0x10),
+    SERVICE_REPLY((byte) 0x11)
     ;
 
-    private final String type;
+    private final byte type;
 
-    MachineType(final String serviceType) {
+    MachineType(final byte serviceType) {
         this.type = serviceType;
     }
 
-    public String getStringType() {
+    public final byte getType() {
         return type;
     }
 
-    public static MachineType fromString(final String type) {
+    public static MachineType fromByte(final byte type) {
         for (MachineType messageType : MachineType.values()) {
             if (type == messageType.type) {
                 return messageType;
             }
         }
 
+        System.out.println("FAIL");
+
         return null;
     }
 
-    @Override
-    public String toString() {
-        return "MachineType{" +
-                "type='" + type + '\'' +
-                '}';
+    public final boolean equals(MachineType other) {
+        return type == other.type;
     }
 }

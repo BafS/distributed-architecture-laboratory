@@ -1,7 +1,7 @@
 package services;
 
-import messages.MessageType;
 import util.Machine;
+import util.MachineType;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -12,8 +12,13 @@ public class ServiceTime extends Service {
     }
 
     @Override
-    public MessageType getServiceType() {
-        return MessageType.RESPONSE_TIME;
+    MachineType getServiceType() {
+        return MachineType.SERVICE_TIME;
+    }
+
+    @Override
+    Service getServiceObject() {
+        return this;
     }
 
     /**

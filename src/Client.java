@@ -1,5 +1,5 @@
-import messages.Message;
 import messages.MessageType;
+import messages.MessageUDP;
 import util.Machine;
 import util.MachineType;
 
@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,26 +31,27 @@ public class Client {
     // Type of service wanted
     private final String type;
 
-    private List<Machine> linkers;
+    private List<InetSocketAddress> linkers;
 
-    private Machine service;
+    // The connected service
+    private InetSocketAddress service;
 
-    public Client(List<Machine> linkers, final String type, final int port) {
+    public Client(List<InetSocketAddress> linkers, final String type, final int port) {
         this.linkers = linkers;
         this.type = type.toLowerCase();
         this.PORT = port;
     }
 
     // TODO share code with Service
-    int subscribeToLinker() throws IOException {
+    int subscribeToLinker() throws IOException, ClassNotFoundException {
         linkers.forEach(System.out::println);
 
         // Use a random linker in the list
-        Machine linker = linkers.get((int) Math.random() * linkers.size());
+        InetSocketAddress linker = linkers.get((int) Math.random() * linkers.size());
 
-        MessageType messageType = null;
+        byte[] payload = null;
         if (type.equals("time")) {
-            messageType = MessageType.ACK_TIME;
+            payload = new byte[]{MachineType.SERVICE_TIME.getType()};
         } else if (type.equals("reply")) {
             // TODO
             System.out.println("Not implemented yet");
@@ -57,22 +59,29 @@ public class Client {
             throw new RuntimeException(type + " is not a valid type of service");
         }
 
-        byte[] buff = new Message(messageType).toByteArray();
+        // ask for time
+        byte[] buff = new MessageUDP(MessageType.ASK_SERVICE, MachineType.SERVICE_TIME, payload).toByteArray();
 
-        InetAddress address = InetAddress.getByName(linker.getHost());
+        InetAddress address = linker.getAddress();
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
 
         DatagramSocket socket = new DatagramSocket(PORT);
         socket.send(packet);
         socket.close();
 
+        packet.setLength(buff.length);
+
         // Get response
         while (true) {
             socket.receive(packet);
 
-            byte type = buff[0];
-            byte[] data = Arrays.copyOfRange(buff, 1, buff.length);
-            Message message = new Message(type, data);
+            MessageUDP message = MessageUDP.fromByteArray(buff);
+
+            if (message.getMessageType() == MessageType.RESPONSE) {
+                System.out.println("GET RESPONSE");
+
+                message.getMessage();
+            }
         }
 
         // Unreachable but should be used
@@ -114,14 +123,14 @@ public class Client {
             return;
         }
 
-        List<Machine> linkers = new ArrayList<>();
+        List<InetSocketAddress> linkers = new ArrayList<>();
         final String type = args[0];
         final int port = Integer.parseInt(args[1]);
 
         // 127.0.0.1:8080,127.0.0.1:8090
         for (String info : args[2].split(",")) {
             String[] token = info.split(":");
-            linkers.add(new Machine(MachineType.CLIENT, token[0], Integer.parseInt(token[1])));
+            linkers.add(new InetSocketAddress(token[0], Integer.parseInt(token[1])));
         }
 
         Client client = new Client(linkers, type, port);
@@ -130,6 +139,8 @@ public class Client {
             client.subscribeToLinker();
             client.keyListener();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
