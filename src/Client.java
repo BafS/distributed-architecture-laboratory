@@ -24,20 +24,21 @@ import java.util.Scanner;
  */
 public class Client {
 
-    private final int PORT;
+    private DatagramSocket socket;
 
     // Type of service wanted
     private final String type;
 
-    private List<MachineAddress> linkers;
+    // The list of all existing linkers (cannot change)
+    private final List<MachineAddress> linkers;
 
     // The connected service
     private MachineAddress service;
 
-    public Client(List<MachineAddress> linkers, final String type, final int port) {
+    public Client(final List<MachineAddress> linkers, final String type, final int port) throws SocketException {
         this.linkers = linkers;
         this.type = type.toLowerCase();
-        this.PORT = port;
+        this.socket = new DatagramSocket(port);
     }
 
     // TODO share code with Service
@@ -65,11 +66,10 @@ public class Client {
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 
-        DatagramSocket socket = new DatagramSocket(PORT);
         socket.send(packet);
 
         buff = new byte[1024];
-        packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+        packet = new DatagramPacket(buff, buff.length);
 //        packet.setLength(buff.length);
 
         // TODO add timeout
@@ -90,8 +90,6 @@ public class Client {
                 break;
             }
         }
-
-         socket.close();
     }
 
     // https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console
@@ -112,7 +110,6 @@ public class Client {
                     byte[] buff = new byte[128];
                     DatagramPacket packet = new DatagramPacket(buff, buff.length, service.getAddress(), service.getPort());
 
-                    DatagramSocket socket = new DatagramSocket(PORT);
                     socket.send(packet);
 
                     while (true) {
@@ -162,9 +159,8 @@ public class Client {
             linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
         }
 
-        Client client = new Client(linkers, type, port);
-
         try {
+            Client client = new Client(linkers, type, port);
             client.subscribeToLinker();
             client.keyListener();
         } catch (IOException e) {

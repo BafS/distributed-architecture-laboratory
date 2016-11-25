@@ -5,9 +5,12 @@ import messages.MessageType;
 import util.MachineAddress;
 import util.MachineType;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,65 +28,77 @@ import java.util.List;
  */
 public abstract class Service {
 
-    private final int PORT;
+    private final DatagramSocket socket;
 
     private List<MachineAddress> linkers;
 
-    private int timeout = 1000;
+    private int timeout = 500;
 
-    public Service(List<MachineAddress> linkers, final int port) {
+    public Service(List<MachineAddress> linkers, final int port) throws SocketException {
         this.linkers = linkers;
-        this.PORT = port;
+        this.socket = new DatagramSocket(port);
     }
 
     /**
      * At initialization, service need to register himself to one of the linkers
      */
-    void subscribeToLinker() throws IOException {
-        System.out.println("[i] linkers:");
-        linkers.forEach(System.out::println);
+    boolean handshake() throws IOException {
+//        System.out.println("[i] Linkers:");
+//        linkers.forEach(System.out::println);
 
         // Use a random linker in the list
-        MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
+        MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
+        System.out.println("[i] Selected linker: " + linker);
 
-        Message message = new Message(
+        // We send a REGISTER_SERVICE with the service type
+        byte[] buff = new byte[512];
+        DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+        packet.setData(new Message(
                 MessageType.REGISTER_SERVICE,
                 MachineType.SERVICE,
                 new byte[]{ this.getServiceType().getType() }
-        );
-
-        System.out.println(message);
-
-        byte[] buff = message.toByteArray();
-
-        DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
-
-        DatagramSocket socket = new DatagramSocket(PORT);
+        ).toByteArray());
 
         socket.send(packet);
 
-        // TODO Need the ACK
-        //        socket.setSoTimeout(timeout);
-//        while (true) {
-//            try {
-//            socket.receive(packet);
-//            } catch(SocketTimeoutException e) {
-//                // We increment the timeout
-//                timeout = Math.max((int) (timeout * 1.5), timeout * 10);
-//                socket.close();
-//                subscribeToLinker();
-//            }
-//        }
+        // Step 2 - We need the ACK packet //
 
-        socket.close();
+//        packet.setLength(buff.length);
+        socket.setSoTimeout(timeout);
+        Message message;
+
+        packet = new DatagramPacket(buff, buff.length);
+
+        try {
+            socket.receive(packet);
+
+            // Continue, even if the packet is corrupt and cannot be unserialized
+            try {
+                message = Message.fromByteArray(buff);
+            } catch (EOFException e) {
+                System.out.println(e.getStackTrace());
+                return handshake();
+            }
+
+            if (message.getMessageType() == MessageType.ACK) {
+                System.out.println("[i] Handshake ok");
+                return true;
+            }
+        } catch(SocketTimeoutException | ClassNotFoundException e) {
+            System.out.println("[i] Timeout (" + timeout + "ms)");
+            // We increment the timeout to not saturate the network (in case the network was not 100% safe)
+            timeout = Math.min((int) (timeout * 1.25), timeout * 10);
+            return handshake();
+        }
+
+        return false;
     }
 
     /**
      * Listen for incoming message
      */
     void listen() throws IOException, ClassNotFoundException {
-        DatagramSocket socket = new DatagramSocket(PORT);
-
+        socket.setSoTimeout(0);
         byte[] buff = new byte[512];
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
@@ -169,8 +184,9 @@ public abstract class Service {
         }
 
         try {
-            service.subscribeToLinker();
-            service.listen();
+            if (service.handshake()) {
+                service.listen();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {

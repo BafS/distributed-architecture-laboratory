@@ -4,10 +4,10 @@ import services.ServiceType;
 import util.MachineAddress;
 import util.MachineType;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
-
 
 /**
  * Linker are the bridge between clients and service
@@ -16,29 +16,26 @@ import java.util.*;
  * Linker communicate to clients with messages (Message)
  *
  * When a linker is halt or stopped by error, the linker automatically tries to restart
- *
+ * <p>
  * Linker cannot be added after the initialization
+ * <p>
+ * Client can send
+ * REQUEST_SERVICE
+ * - Send the service address
+ * <p>
+ * NOT_RESPONDING_SERVICE
+ * - Check if the service is dead and remove the service from the list
+ * - If true: Send his table to the other linkers
  */
 public class Linker {
 
-    private int PORT;
+    private final DatagramSocket socket;
 
     private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
 
-    public Linker(final int port) {
-        PORT = port;
+    public Linker(final int port) throws SocketException {
+        socket = new DatagramSocket(port);
     }
-
-    private void handleServiceRegistration(Message message) {
-    }
-
-//    private void handleClients(MachineType) {
-//
-//    }
-//
-//    private void handleService() {
-//
-//    }
 
     /**
      * Listen for new messages from clients or services
@@ -46,17 +43,24 @@ public class Linker {
      * @throws IOException
      */
     public void listen() throws IOException, ClassNotFoundException {
-        DatagramSocket socket = new DatagramSocket(PORT);
-
         byte[] buff = new byte[512];
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
+        Message message;
+
         // Listen for new messages
         while (true) {
+            System.out.println("[i] listen...");
             socket.receive(packet);
 
-            Message message = Message.fromByteArray(buff);
+            // Continue, even if the packet is corrupt and cannot be unserialized
+            try {
+                message = Message.fromByteArray(buff);
+            } catch (EOFException e) {
+                System.out.println(e.getStackTrace());
+                continue;
+            }
 
             byte[] payload = message.getPayload();
 
@@ -78,19 +82,32 @@ public class Linker {
                             break;
                     }
 
-                    // TODO check for doubles
+                    // If the set is empty, we create the new set
                     if (services.isEmpty() || services.get(serviceType).isEmpty()) {
                         Set<MachineAddress> set = new HashSet<>();
                         services.put(serviceType, set);
                     }
 
-//                        HashSet<MachineAddress> set = new HashSet<>(packet.getSocketAddress());
-//                        services.put(serviceType, set);
-//                        services.get(serviceType).add(packet.getSocketAddress());
-                    services.get(serviceType).add(new MachineAddress(packet.getAddress().getHostAddress(), packet.getPort()));
+                    // We add the machine to the set
+                    services.get(serviceType).add(
+                            new MachineAddress(
+                                    packet.getAddress().getHostAddress(),
+                                    packet.getPort()
+                            ));
 
                     System.out.println("[i] Services:");
                     printServices();
+
+                    // Send an ACK to show that the linker is alive
+                    packet.setData(new Message(
+                            MessageType.ACK,
+                            MachineType.LINKER,
+                            null
+                    ).toByteArray());
+
+                    socket.send(packet);
+
+                    System.out.println("message sent");
 
                     break;
 
@@ -109,34 +126,32 @@ public class Linker {
                             MachineAddress randomService = getAny(specificServices);
 
                             // Send the address of one of the specific service
-                            buff = new Message(
+                            packet.setData(new Message(
                                     MessageType.RESPONSE,
                                     MachineType.LINKER,
                                     randomService.toByteArray()
-                            ).toByteArray();
+                            ).toByteArray());
 
-                            packet.setData(buff);
-
-                            System.out.println("Send machine to client");
+                            System.out.println("[i] Send service address to client");
                             socket.send(packet);
-//                            socket.
-//                            socket.close();
                         }
                     }
 
                     break;
                 default:
-                    System.out.println(">>> Unknown message");
+                    System.out.println("> Got an unknown message");
             }
 
             // Reset the length of the packet before reuse
-            packet.setLength(buff.length);
+//            packet.setLength(buff.length);
+
+            packet = new DatagramPacket(buff, buff.length);
         }
     }
 
-    public static MachineAddress getAny(Set<MachineAddress> coll) {
-        int num = (int) (Math.random() * coll.size());
-        for(MachineAddress ma: coll) if (--num < 0) return ma;
+    public static MachineAddress getAny(Set<MachineAddress> services) {
+        int num = (int) (Math.random() * services.size());
+        for (MachineAddress ma : services) if (--num < 0) return ma;
         throw new AssertionError();
     }
 
@@ -145,14 +160,8 @@ public class Linker {
 
         packet.setLength(buff.length);
 
-        DatagramSocket socket = new DatagramSocket(PORT);
         socket.send(packet);
-        socket.close();
     }
-
-//    private Optional<Machine> getService(final MachineType type) {
-//        return this.services.stream().parallel().filter(m -> m.getMachineType() == type).findAny();
-//    }
 
     private void printServices() {
         services.forEach((m, a) -> System.out.println("- " + a));
@@ -176,9 +185,7 @@ public class Linker {
         try {
             Linker linker = new Linker(port);
             linker.listen();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }

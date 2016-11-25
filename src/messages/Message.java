@@ -8,9 +8,11 @@ import java.util.Arrays;
 
 /**
  * Message to communicate between instances on the network.
+ * Messages are serializable to be able to get a binary buffer to send to the network
  */
 public class Message implements Serializable, ByteArrayable {
 
+    private static final long serialVersionUID = 8073741970285089526L;
     private MessageType messageType;
     private MachineType machineType; // sender
     private byte[] payload;

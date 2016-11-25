@@ -6,6 +6,8 @@ import java.net.InetSocketAddress;
 // Wrapper
 public class MachineAddress extends InetSocketAddress implements Serializable, ByteArrayable {
 
+    private static final long serialVersionUID = -2525112949161709437L;
+
     public MachineAddress(String hostname, int port) {
         super(hostname, port);
     }
