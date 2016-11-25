@@ -18,12 +18,18 @@ import java.util.List;
  *
  * Multiple types of services exists.
  * Automatically restart on error.
+ *
+ * Handshake:
+ * Service --(register)--> Linker
+ *         <----(ack)-----
  */
 public abstract class Service {
 
     private final int PORT;
 
     private List<MachineAddress> linkers;
+
+    private int timeout = 1000;
 
     public Service(List<MachineAddress> linkers, final int port) {
         this.linkers = linkers;
@@ -33,7 +39,8 @@ public abstract class Service {
     /**
      * At initialization, service need to register himself to one of the linkers
      */
-    int subscribeToLinker() throws IOException {
+    void subscribeToLinker() throws IOException {
+        System.out.println("[i] linkers:");
         linkers.forEach(System.out::println);
 
         // Use a random linker in the list
@@ -54,9 +61,21 @@ public abstract class Service {
         DatagramSocket socket = new DatagramSocket(PORT);
 
         socket.send(packet);
-        socket.close();
 
-        return socket.getPort();
+        // TODO Need the ACK
+        //        socket.setSoTimeout(timeout);
+//        while (true) {
+//            try {
+//            socket.receive(packet);
+//            } catch(SocketTimeoutException e) {
+//                // We increment the timeout
+//                timeout = Math.max((int) (timeout * 1.5), timeout * 10);
+//                socket.close();
+//                subscribeToLinker();
+//            }
+//        }
+
+        socket.close();
     }
 
     /**
@@ -128,26 +147,29 @@ public abstract class Service {
         // TODO -> split main in each service ?
 
         if (args.length < 2) {
-//            System.out.println("Usage: java service <type> <port> <list of linkers>");
-            System.out.println("Usage: java service <type> <list of linkers>");
+            System.out.println("Usage: java service <type> <port> <list of linkers>");
             return;
         }
 
         List<MachineAddress> linkers = new ArrayList<>();
         String type = args[0];
+        int port = Integer.parseInt(args[1]);
 
         // 127.0.0.1:8080,127.0.0.1:8090
-        for (String info : args[1].split(",")) {
+        for (String info : args[2].split(",")) {
             String[] token = info.split(":");
             linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
         }
 
         Service service;
-//        if (type.equals("reply"))
-        service = new ServiceTime(linkers, 9911);
+        if (type.equals("time")) {
+            service = new ServiceTime(linkers, port);
+        } else {
+            service = new ServiceReply(linkers, port);
+        }
 
         try {
-            int port = service.subscribeToLinker();
+            service.subscribeToLinker();
             service.listen();
         } catch (IOException e) {
             e.printStackTrace();

@@ -23,7 +23,7 @@ public class Linker {
 
     private int PORT;
 
-    private Map<ServiceType, List<MachineAddress>> services = new HashMap<>();
+    private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
 
     public Linker(final int port) {
         PORT = port;
@@ -57,7 +57,6 @@ public class Linker {
             socket.receive(packet);
 
             Message message = Message.fromByteArray(buff);
-            MachineType machineType = message.getMachineType();
 
             byte[] payload = message.getPayload();
 
@@ -81,8 +80,8 @@ public class Linker {
 
                     // TODO check for doubles
                     if (services.isEmpty() || services.get(serviceType).isEmpty()) {
-                        ArrayList<MachineAddress> list = new ArrayList<>();
-                        services.put(serviceType, list);
+                        Set<MachineAddress> set = new HashSet<>();
+                        services.put(serviceType, set);
                     }
 
 //                        HashSet<MachineAddress> set = new HashSet<>(packet.getSocketAddress());
@@ -96,23 +95,18 @@ public class Linker {
                     break;
 
                 case REQUEST_SERVICE:
-                    System.out.println(">>> A client asked for a service");
-
                     if (!services.isEmpty()) {
+                        System.out.println("> A client asked for a service");
                         if (services.containsKey(serviceType)) {
-                            List<MachineAddress> specificServices = services.get(serviceType);
+                            System.out.println(serviceType);
+
+                            Set<MachineAddress> specificServices = services.get(serviceType);
 
                             System.out.println("[i] There is currently " + specificServices.size() + " services of " + serviceType.name());
 
                             packet.setLength(buff.length);
 
-                            int index = new Random().nextInt(specificServices.size());
-                            MachineAddress randomService = specificServices.get(index);
-
-//                            payload = new byte[]{
-//                                    randomService.getAddress().getAddress(),
-//                                    (byte) randomService.getPort()
-//                            };
+                            MachineAddress randomService = getAny(specificServices);
 
                             // Send the address of one of the specific service
                             buff = new Message(
@@ -138,6 +132,12 @@ public class Linker {
             // Reset the length of the packet before reuse
             packet.setLength(buff.length);
         }
+    }
+
+    public static MachineAddress getAny(Set<MachineAddress> coll) {
+        int num = (int) (Math.random() * coll.size());
+        for(MachineAddress ma: coll) if (--num < 0) return ma;
+        throw new AssertionError();
     }
 
     private void send(DatagramPacket packet, Message m) throws IOException {
