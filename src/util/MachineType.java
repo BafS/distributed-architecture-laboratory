@@ -4,8 +4,7 @@ public enum MachineType {
 
     CLIENT((byte) 0x00),
     LINKER((byte) 0x01),
-    SERVICE_TIME((byte) 0x10),
-    SERVICE_REPLY((byte) 0x11)
+    SERVICE((byte) 0x02),
     ;
 
     private final byte type;

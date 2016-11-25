@@ -1,7 +1,7 @@
 package services;
 
+import messages.Message;
 import messages.MessageType;
-import messages.MessageUDP;
 import util.Machine;
 import util.MachineType;
 
@@ -40,10 +40,10 @@ public abstract class Service {
         // Use a random linker in the list
         Machine linker = linkers.get((int) Math.random() * linkers.size());
 
-        MessageUDP message = new MessageUDP(
+        Message message = new Message(
                 MessageType.REGISTER_SERVICE,
-                this.getServiceType(),
-                new byte[]{this.getServiceType().getType()}
+                MachineType.SERVICE,
+                new byte[]{ this.getServiceType().getType() }
         );
 
         System.out.println(message);
@@ -71,7 +71,7 @@ public abstract class Service {
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
-        MessageUDP message;
+        Message message;
 
         System.out.println("[i] Listen for new messages...");
 
@@ -79,21 +79,21 @@ public abstract class Service {
         while (true) {
             socket.receive(packet);
 
-            message = MessageUDP.fromByteArray(buff);
+            message = Message.fromByteArray(buff);
 
             // DEBUG
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
-            System.out.println("(message: " + message.getMessage() + ")");
+            System.out.println("(message: " + message.getPayload() + ")");
 
             switch (message.getMessageType()) {
-                case ACK:
+                case REQUEST_TIME:
                     System.out.println(">>> ASK FOR THE SERVICE");
 
 //                    Service concretService = getServiceObject();
 //                    this.get
 
-                    buff = this.getResponse(message.getMessage()); // polymorphism
-//                    message = new MessageUDP(type, buff);
+//                    buff = this.getResponse(message.getPayload()); // polymorphism
+//                    message = new Message(type, buff);
 //                    sendMessage(packet, message);
                     break;
                 default:
@@ -107,7 +107,7 @@ public abstract class Service {
 
     abstract byte[] getResponse(final byte[] message);
 
-    abstract MachineType getServiceType();
+    abstract ServiceType getServiceType();
 
     /**
      * Send a message
@@ -115,9 +115,9 @@ public abstract class Service {
      * @param packet
      * @param message
      */
-    private void sendMessage(DatagramPacket packet, MessageUDP message) throws IOException {
+    private void sendMessage(DatagramPacket packet, Message message) throws IOException {
         DatagramPacket packetToSend = new DatagramPacket(
-                message.getMessage(), message.getMessage().length, packet.getAddress(), packet.getPort());
+                message.getPayload(), message.getPayload().length, packet.getAddress(), packet.getPort());
 
         DatagramSocket ds = new DatagramSocket();
         ds.send(packetToSend);

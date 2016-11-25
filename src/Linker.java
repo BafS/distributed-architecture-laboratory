@@ -1,5 +1,7 @@
+import messages.Message;
 import messages.MessageType;
-import messages.MessageUDP;
+import services.ServiceType;
+import util.MachineAddress;
 import util.MachineType;
 
 import java.io.IOException;
@@ -21,18 +23,14 @@ public class Linker {
 
     private int PORT;
 
-//    private List<Machine> services = new ArrayList<>();
-
-//    private Map<MachineType, Set<Machine>> services2 = new HashMap<>();
-
-    private Map<MachineType, List<InetSocketAddress>> services3 = new HashMap<>();
+    private Map<ServiceType, List<MachineAddress>> services = new HashMap<>();
 
     public Linker(final int port) {
         PORT = port;
     }
 
-//    private void onRegistration(Message message) {
-//    }
+    private void handleServiceRegistration(Message message) {
+    }
 
 //    private void handleClients(MachineType) {
 //
@@ -58,79 +56,78 @@ public class Linker {
         while (true) {
             socket.receive(packet);
 
-            MessageUDP message = MessageUDP.fromByteArray(buff);
+            Message message = Message.fromByteArray(buff);
             MachineType machineType = message.getMachineType();
+
+            byte[] payload = message.getPayload();
 
             // DEBUG
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
-            System.out.println("(message: " + message.getMessage() + ")");
+
+            ServiceType serviceType = ServiceType.values()[payload[0]];
 
             switch (message.getMessageType()) {
                 case REGISTER_SERVICE:
-                    System.out.println(">>> REGISTER SERVICE");
+                    System.out.println("> Register service");
 
-                    if (message.getMachineType().equals(MachineType.SERVICE_TIME)) {
-                        System.out.println("-> TIME");
-                    }
-                    if (message.getMachineType().equals(MachineType.SERVICE_REPLY)) {
-                        System.out.println("-> REPLY");
-                    } else {
-                        System.out.println("UNKNOWN MESSAGE TYPE");
+                    switch (serviceType) {
+                        case SERVICE_REPLY:
+                            System.out.println("  Type: reply");
+                            break;
+                        case SERVICE_TIME:
+                            System.out.println("  Type: time");
+                            break;
                     }
 
                     // TODO check for doubles
-//                    services.add(new Machine(MachineType.SERVICE_REPLY, packet));
-
-                    if (services3.isEmpty() || services3.get(machineType).isEmpty()) {
-                        ArrayList<InetSocketAddress> list = new ArrayList<>();
-                        services3.put(machineType, list);
+                    if (services.isEmpty() || services.get(serviceType).isEmpty()) {
+                        ArrayList<MachineAddress> list = new ArrayList<>();
+                        services.put(serviceType, list);
                     }
 
-//                        HashSet<InetSocketAddress> set = new HashSet<>(packet.getSocketAddress());
-//                        services3.put(machineType, set);
-//                        services3.get(machineType).add(packet.getSocketAddress());
-                    services3.get(machineType).add(new InetSocketAddress(
-                            packet.getAddress(),
-                            packet.getPort()
-                    ));
+//                        HashSet<MachineAddress> set = new HashSet<>(packet.getSocketAddress());
+//                        services.put(serviceType, set);
+//                        services.get(serviceType).add(packet.getSocketAddress());
+                    services.get(serviceType).add(new MachineAddress(packet.getAddress().getHostAddress(), packet.getPort()));
 
                     System.out.println("[i] Services:");
                     printServices();
 
                     break;
-                case ASK_SERVICE:
-                    System.out.println(">>> A Client asked for a service");
 
-                    if (machineType == MachineType.SERVICE_TIME) {
-                        System.out.println("-> TIME");
+                case REQUEST_SERVICE:
+                    System.out.println(">>> A client asked for a service");
 
-                        if (!services3.isEmpty()) {
-                            System.out.println("A" + services3.size());
+                    if (!services.isEmpty()) {
+                        if (services.containsKey(serviceType)) {
+                            List<MachineAddress> specificServices = services.get(serviceType);
 
-                            if (services3.containsKey(MachineType.SERVICE_TIME)) {
-                                System.out.println("B");
+                            System.out.println("[i] There is currently " + specificServices.size() + " services of " + serviceType.name());
 
-                                packet.setLength(buff.length);
+                            packet.setLength(buff.length);
 
-                                int index = new Random().nextInt(services3.get(MachineType.SERVICE_TIME).size());
-                                System.out.println("C" + index);
-                                InetSocketAddress randomService = services3.get(MachineType.SERVICE_TIME).get(index);
+                            int index = new Random().nextInt(specificServices.size());
+                            MachineAddress randomService = specificServices.get(index);
 
-                                buff = new MessageUDP(
-                                        MessageType.RESPONSE,
-                                        MachineType.LINKER,
-                                        randomService.getAddress().getAddress()
-                                ).toByteArray();
+//                            payload = new byte[]{
+//                                    randomService.getAddress().getAddress(),
+//                                    (byte) randomService.getPort()
+//                            };
 
-                                packet.setData(buff);
+                            // Send the address of one of the specific service
+                            buff = new Message(
+                                    MessageType.RESPONSE,
+                                    MachineType.LINKER,
+                                    randomService.toByteArray()
+                            ).toByteArray();
 
-                                socket.send(packet);
-                                socket.close();
+                            packet.setData(buff);
 
-                                System.out.println("Send machine to client");
-                            }
+                            System.out.println("Send machine to client");
+                            socket.send(packet);
+//                            socket.
+//                            socket.close();
                         }
-
                     }
 
                     break;
@@ -143,7 +140,7 @@ public class Linker {
         }
     }
 
-    private void send(DatagramPacket packet, MessageUDP m) throws IOException {
+    private void send(DatagramPacket packet, Message m) throws IOException {
         byte[] buff = m.toByteArray();
 
         packet.setLength(buff.length);
@@ -158,7 +155,7 @@ public class Linker {
 //    }
 
     private void printServices() {
-        services3.forEach((m, a) -> System.out.println(a));
+        services.forEach((m, a) -> System.out.println("- " + a));
     }
 
     /**

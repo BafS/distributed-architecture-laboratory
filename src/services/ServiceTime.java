@@ -12,13 +12,8 @@ public class ServiceTime extends Service {
     }
 
     @Override
-    MachineType getServiceType() {
-        return MachineType.SERVICE_TIME;
-    }
-
-    @Override
-    Service getServiceObject() {
-        return this;
+    ServiceType getServiceType() {
+        return ServiceType.SERVICE_TIME;
     }
 
     /**

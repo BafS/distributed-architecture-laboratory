@@ -1,6 +1,7 @@
+import messages.Message;
 import messages.MessageType;
-import messages.MessageUDP;
-import util.Machine;
+import services.ServiceType;
+import util.MachineAddress;
 import util.MachineType;
 
 import java.io.IOException;
@@ -9,7 +10,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
@@ -31,63 +31,69 @@ public class Client {
     // Type of service wanted
     private final String type;
 
-    private List<InetSocketAddress> linkers;
+    private List<MachineAddress> linkers;
 
     // The connected service
-    private InetSocketAddress service;
+    private MachineAddress service;
 
-    public Client(List<InetSocketAddress> linkers, final String type, final int port) {
+    public Client(List<MachineAddress> linkers, final String type, final int port) {
         this.linkers = linkers;
         this.type = type.toLowerCase();
         this.PORT = port;
     }
 
     // TODO share code with Service
-    int subscribeToLinker() throws IOException, ClassNotFoundException {
+    void subscribeToLinker() throws IOException, ClassNotFoundException {
         linkers.forEach(System.out::println);
 
         // Use a random linker in the list
-        InetSocketAddress linker = linkers.get((int) Math.random() * linkers.size());
+        MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] payload = null;
+        byte[] payload;
         if (type.equals("time")) {
-            payload = new byte[]{MachineType.SERVICE_TIME.getType()};
+            payload = new byte[]{
+                    ServiceType.SERVICE_TIME.getType()
+            };
         } else if (type.equals("reply")) {
-            // TODO
-            System.out.println("Not implemented yet");
+            payload = new byte[]{
+                    ServiceType.SERVICE_REPLY.getType()
+            };
         } else {
             throw new RuntimeException(type + " is not a valid type of service");
         }
 
-        // ask for time
-        byte[] buff = new MessageUDP(MessageType.ASK_SERVICE, MachineType.SERVICE_TIME, payload).toByteArray();
+        // Request a specific service
+        byte[] buff = new Message(MessageType.REQUEST_SERVICE, MachineType.CLIENT, payload).toByteArray();
 
-        InetAddress address = linker.getAddress();
-        DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
+        InetSocketAddress address = linker.getAddress();
+        DatagramPacket packet = new DatagramPacket(buff, buff.length, address.getAddress(), linker.getPort());
 
         DatagramSocket socket = new DatagramSocket(PORT);
         socket.send(packet);
-        socket.close();
+//        socket.close();
 
-        packet.setLength(buff.length);
+        buff = new byte[1024];
+        packet = new DatagramPacket(buff, buff.length, address.getAddress(), linker.getPort());
+//        packet.setLength(buff.length);
 
         // Get response
         while (true) {
             socket.receive(packet);
 
-            MessageUDP message = MessageUDP.fromByteArray(buff);
+            Message message = Message.fromByteArray(buff);
 
             if (message.getMessageType() == MessageType.RESPONSE) {
-                System.out.println("GET RESPONSE");
+                System.out.println("Get service address");
 
-                message.getMessage();
+                service = MachineAddress.fromByteArray(message.getPayload());
+
+                System.out.println(service);
+
+                break;
             }
         }
 
-        // Unreachable but should be used
-        // socket.close();
-
-//        return socket.getPort();
+         socket.close();
     }
 
     // https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console
@@ -97,13 +103,14 @@ public class Client {
         while (!exit) {
             System.out.println("Enter command (quit to exit):");
             String input = keyboard.nextLine();
-            if(input != null) {
+            if (input != null) {
                 System.out.println("Your input is : " + input);
                 if ("quit".equals(input) || "q".equals(input)) {
                     System.out.println("Exit client");
                     exit = true;
                 } else {
-                    // TODO send "ask time"
+                    // TODO send "ask" for the specific service
+
                 }
             }
         }
@@ -123,14 +130,14 @@ public class Client {
             return;
         }
 
-        List<InetSocketAddress> linkers = new ArrayList<>();
+        List<MachineAddress> linkers = new ArrayList<>();
         final String type = args[0];
         final int port = Integer.parseInt(args[1]);
 
         // 127.0.0.1:8080,127.0.0.1:8090
         for (String info : args[2].split(",")) {
             String[] token = info.split(":");
-            linkers.add(new InetSocketAddress(token[0], Integer.parseInt(token[1])));
+            linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
         }
 
         Client client = new Client(linkers, type, port);

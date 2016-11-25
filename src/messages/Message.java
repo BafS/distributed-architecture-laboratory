@@ -8,17 +8,16 @@ import java.util.Arrays;
 /**
  * Message to communicate between instances on the network.
  */
-public class MessageUDP implements Serializable {
-    private static final long serialVersionUID = -5399605122490343339L;
+public class Message implements Serializable {
 
     private MessageType messageType;
-    private MachineType machineType;
-    private byte[] message;
+    private MachineType machineType; // sender
+    private byte[] payload;
 
-    public MessageUDP(MessageType messageType, MachineType machineType, byte[] message) {
+    public Message(MessageType messageType, MachineType machineType, byte[] message) {
         this.messageType = messageType;
         this.machineType = machineType;
-        this.message = message;
+        this.payload = message;
     }
 
     public byte[] toByteArray() throws IOException {
@@ -33,8 +32,8 @@ public class MessageUDP implements Serializable {
         }
     }
 
-    public byte[] getMessage() {
-        return message;
+    public byte[] getPayload() {
+        return payload;
     }
 
     public MachineType getMachineType() {
@@ -45,10 +44,10 @@ public class MessageUDP implements Serializable {
         return messageType;
     }
 
-    public static MessageUDP fromByteArray(final byte[] bytes) throws IOException, ClassNotFoundException {
+    public static Message fromByteArray(final byte[] bytes) throws IOException, ClassNotFoundException {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes)) {
             try (ObjectInputStream ois = new ObjectInputStream(bais)) {
-                MessageUDP o1 = (MessageUDP) ois.readObject();
+                Message o1 = (Message) ois.readObject();
                 ois.close();
                 return o1;
             }
@@ -57,10 +56,10 @@ public class MessageUDP implements Serializable {
 
     @Override
     public String toString() {
-        return "MessageUDP{" +
+        return "Message{" +
                 "messageType=" + messageType +
                 ", machineType=" + machineType +
-                ", message=" + Arrays.toString(message) +
+                ", payload=" + Arrays.toString(payload) +
                 '}';
     }
 }
