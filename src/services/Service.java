@@ -65,7 +65,7 @@ public abstract class Service {
     void listen() throws IOException, ClassNotFoundException {
         DatagramSocket socket = new DatagramSocket(PORT);
 
-        byte[] buff = new byte[Long.BYTES];
+        byte[] buff = new byte[512];
 
         DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
@@ -85,7 +85,7 @@ public abstract class Service {
 
             switch (message.getMessageType()) {
                 case REQUEST_TIME:
-                    System.out.println(">>> ASK FOR THE SERVICE");
+                    System.out.println("> Ask for the service function");
 
 //                    Service concretService = getServiceObject();
 //                    this.get

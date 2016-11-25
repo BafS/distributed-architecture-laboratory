@@ -26,4 +26,9 @@ public class ServiceTime extends Service {
         buffer.putLong(System.nanoTime());
         return buffer.array();
     }
+
+    public static Long getResponseFromByteArray(byte[] response) {
+        ByteBuffer bb = ByteBuffer.wrap(response);
+        return bb.getLong();
+    }
 }

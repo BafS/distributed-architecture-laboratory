@@ -1,14 +1,12 @@
 import messages.Message;
 import messages.MessageType;
+import services.ServiceTime;
 import services.ServiceType;
 import util.MachineAddress;
 import util.MachineType;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -65,16 +63,16 @@ public class Client {
         // Request a specific service
         byte[] buff = new Message(MessageType.REQUEST_SERVICE, MachineType.CLIENT, payload).toByteArray();
 
-        InetSocketAddress address = linker;
-        DatagramPacket packet = new DatagramPacket(buff, buff.length, address.getAddress(), linker.getPort());
+        DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 
         DatagramSocket socket = new DatagramSocket(PORT);
         socket.send(packet);
-//        socket.close();
 
         buff = new byte[1024];
-        packet = new DatagramPacket(buff, buff.length, address.getAddress(), linker.getPort());
+        packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 //        packet.setLength(buff.length);
+
+        // TODO add timeout
 
         // Get response
         while (true) {
@@ -97,7 +95,7 @@ public class Client {
     }
 
     // https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console
-    public void keyListener() {
+    public void keyListener() throws IOException, ClassNotFoundException {
         Scanner keyboard = new Scanner(System.in);
         boolean exit = false;
         while (!exit) {
@@ -110,6 +108,30 @@ public class Client {
                     exit = true;
                 } else {
                     // TODO send "ask" for the specific service
+
+                    byte[] buff = new byte[128];
+                    DatagramPacket packet = new DatagramPacket(buff, buff.length, service.getAddress(), service.getPort());
+
+                    DatagramSocket socket = new DatagramSocket(PORT);
+                    socket.send(packet);
+
+                    while (true) {
+                        socket.receive(packet);
+                        Message message = Message.fromByteArray(buff);
+
+                        if (message.getMessageType() == MessageType.RESPONSE_TIME) {
+                            System.out.println("> Get time response");
+
+                            long time = ServiceTime.getResponseFromByteArray(message.getPayload());
+
+                            System.out.println(time);
+                            System.out.println(System.nanoTime());
+
+                            break;
+                        }
+                    }
+
+                    socket.close();
 
                 }
             }
