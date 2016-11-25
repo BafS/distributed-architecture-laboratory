@@ -1,5 +1,6 @@
 package messages;
 
+import util.ByteArrayable;
 import util.MachineType;
 
 import java.io.*;
@@ -8,7 +9,7 @@ import java.util.Arrays;
 /**
  * Message to communicate between instances on the network.
  */
-public class Message implements Serializable {
+public class Message implements Serializable, ByteArrayable {
 
     private MessageType messageType;
     private MachineType machineType; // sender
@@ -18,18 +19,6 @@ public class Message implements Serializable {
         this.messageType = messageType;
         this.machineType = machineType;
         this.payload = message;
-    }
-
-    public byte[] toByteArray() throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                oos.flush();
-                oos.writeObject(this);
-                oos.flush();
-            }
-
-            return baos.toByteArray();
-        }
     }
 
     public byte[] getPayload() {
@@ -45,13 +34,7 @@ public class Message implements Serializable {
     }
 
     public static Message fromByteArray(final byte[] bytes) throws IOException, ClassNotFoundException {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes)) {
-            try (ObjectInputStream ois = new ObjectInputStream(bais)) {
-                Message o1 = (Message) ois.readObject();
-                ois.close();
-                return o1;
-            }
-        }
+        return (Message) ByteArrayable.fromByteArray(bytes);
     }
 
     @Override

@@ -4,53 +4,22 @@ import java.io.*;
 import java.net.InetSocketAddress;
 
 // Wrapper
-public class MachineAddress implements Serializable {
-    private InetSocketAddress address;
+public class MachineAddress extends InetSocketAddress implements Serializable, ByteArrayable {
 
-    public MachineAddress(InetSocketAddress address) {
-        this.address = address;
+    public MachineAddress(String hostname, int port) {
+        super(hostname, port);
     }
 
-    public MachineAddress(String host, int port) {
-        this.address = new InetSocketAddress(host, port);
-    }
-
-    public int getPort() {
-        return address.getPort();
-    }
-
-    public String getHostName() {
-        return address.getHostName();
+    public MachineAddress(InetSocketAddress isa) {
+        super(isa.getAddress(), isa.getPort());
     }
 
     @Override
     public String toString() {
-        return address.toString();
-    }
-
-    public byte[] toByteArray() throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                oos.flush();
-                oos.writeObject(address);
-                oos.flush();
-            }
-
-            return baos.toByteArray();
-        }
+        return super.toString();
     }
 
     public static MachineAddress fromByteArray(final byte[] bytes) throws IOException, ClassNotFoundException {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes)) {
-            try (ObjectInputStream ois = new ObjectInputStream(bais)) {
-                InetSocketAddress o1 = (InetSocketAddress) ois.readObject();
-                ois.close();
-                return new MachineAddress(o1);
-            }
-        }
-    }
-
-    public InetSocketAddress getAddress() {
-        return address;
+        return (MachineAddress) ByteArrayable.fromByteArray(bytes);
     }
 }
