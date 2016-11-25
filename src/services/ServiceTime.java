@@ -1,13 +1,12 @@
 package services;
 
-import util.Machine;
-import util.MachineType;
+import util.MachineAddress;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ServiceTime extends Service {
-    public ServiceTime(List<Machine> linkers, final int port) {
+    public ServiceTime(List<MachineAddress> linkers, final int port) {
         super(linkers, port);
     }
 

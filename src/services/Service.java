@@ -2,13 +2,12 @@ package services;
 
 import messages.Message;
 import messages.MessageType;
-import util.Machine;
+import util.MachineAddress;
 import util.MachineType;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,9 +23,9 @@ public abstract class Service {
 
     private final int PORT;
 
-    private List<Machine> linkers;
+    private List<MachineAddress> linkers;
 
-    public Service(List<Machine> linkers, final int port) {
+    public Service(List<MachineAddress> linkers, final int port) {
         this.linkers = linkers;
         this.PORT = port;
     }
@@ -38,7 +37,7 @@ public abstract class Service {
         linkers.forEach(System.out::println);
 
         // Use a random linker in the list
-        Machine linker = linkers.get((int) Math.random() * linkers.size());
+        MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
 
         Message message = new Message(
                 MessageType.REGISTER_SERVICE,
@@ -50,8 +49,7 @@ public abstract class Service {
 
         byte[] buff = message.toByteArray();
 
-        InetAddress address = InetAddress.getByName(linker.getHost());
-        DatagramPacket packet = new DatagramPacket(buff, buff.length, address, linker.getPort());
+        DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 
         DatagramSocket socket = new DatagramSocket(PORT);
 
@@ -135,13 +133,13 @@ public abstract class Service {
             return;
         }
 
-        List<Machine> linkers = new ArrayList<>();
+        List<MachineAddress> linkers = new ArrayList<>();
         String type = args[0];
 
         // 127.0.0.1:8080,127.0.0.1:8090
         for (String info : args[1].split(",")) {
             String[] token = info.split(":");
-            linkers.add(new Machine(MachineType.LINKER, token[0], Integer.parseInt(token[1])));
+            linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
         }
 
         Service service;

@@ -1,11 +1,11 @@
 package services;
 
-import util.Machine;
+import util.MachineAddress;
 
 import java.util.List;
 
 public class ServiceReply extends Service {
-    public ServiceReply(List<Machine> linkers, final int port) {
+    public ServiceReply(List<MachineAddress> linkers, final int port) {
         super(linkers, port);
     }
 

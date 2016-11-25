@@ -65,7 +65,7 @@ public class Client {
         // Request a specific service
         byte[] buff = new Message(MessageType.REQUEST_SERVICE, MachineType.CLIENT, payload).toByteArray();
 
-        InetSocketAddress address = linker.getAddress();
+        InetSocketAddress address = linker;
         DatagramPacket packet = new DatagramPacket(buff, buff.length, address.getAddress(), linker.getPort());
 
         DatagramSocket socket = new DatagramSocket(PORT);
