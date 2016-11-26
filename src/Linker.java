@@ -38,6 +38,7 @@ public class Linker {
     }
 
     /**
+     * Handle register service request
      *
      * @param message
      * @param packet
@@ -46,19 +47,10 @@ public class Linker {
     private void handleRegisterService(Message message, DatagramPacket packet) throws IOException {
         ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
 
-        System.out.println("> Register service");
-
-        switch (serviceType) {
-            case SERVICE_REPLY:
-                System.out.println("  Type: reply");
-                break;
-            case SERVICE_TIME:
-                System.out.println("  Type: time");
-                break;
-        }
+        System.out.println("> Register service (" + serviceType + ")");
 
         // If the set is empty, we create the new set
-        if (services.isEmpty() || services.get(serviceType).isEmpty()) {
+        if (!services.containsKey(serviceType)) {
             Set<MachineAddress> set = new HashSet<>();
             services.put(serviceType, set);
         }
@@ -84,6 +76,7 @@ public class Linker {
     }
 
     /**
+     * Handle request service request
      *
      * @param message
      * @param packet
@@ -125,13 +118,16 @@ public class Linker {
     public void listen() throws IOException, ClassNotFoundException {
         byte[] buff = new byte[512];
 
-        DatagramPacket packet = new DatagramPacket(buff, buff.length);
+        DatagramPacket packet;
 
         Message message;
 
         // Listen for new messages
         while (true) {
             System.out.println("[i] listen for new messages...");
+
+            // Reset packet before reuse
+            packet = new DatagramPacket(buff, buff.length);
             socket.receive(packet);
 
             // Continue, even if the packet is corrupt and cannot be unserialized
@@ -143,7 +139,8 @@ public class Linker {
             }
 
             // DEBUG
-            System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
+            System.out.println("New message [" + packet.getAddress().getHostName() + ":" + packet.getPort() + "]");
+            System.out.println(message);
 
             switch (message.getMessageType()) {
                 case REGISTER_SERVICE:
@@ -156,10 +153,6 @@ public class Linker {
                 default:
                     System.out.println("> Got an unknown message");
             }
-
-            // Reset the length of the packet before reuse
-//            packet.setLength(buff.length);
-//            packet = new DatagramPacket(buff, buff.length);
         }
     }
 

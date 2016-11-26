@@ -1,5 +1,7 @@
 import messages.Message;
 import messages.MessageType;
+import services.ServiceReply;
+import services.ServiceSum;
 import services.ServiceTime;
 import services.ServiceType;
 import util.MachineAddress;
@@ -8,6 +10,7 @@ import util.MachineType;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -27,7 +30,7 @@ public class Client {
     private DatagramSocket socket;
 
     // Type of service wanted
-    private final String type;
+    private final ServiceType serviceType;
 
     // The list of all existing linkers (cannot change)
     private final List<MachineAddress> linkers;
@@ -37,40 +40,46 @@ public class Client {
 
     public Client(final List<MachineAddress> linkers, final String type, final int port) throws SocketException {
         this.linkers = linkers;
-        this.type = type.toLowerCase();
+
+        if (type.toLowerCase().equals("time")) {
+            this.serviceType = ServiceType.SERVICE_TIME;
+        } else if (type.equals("reply")) {
+            this.serviceType = ServiceType.SERVICE_REPLY;
+        } else if (type.equals("sum")) {
+            this.serviceType = ServiceType.SERVICE_SUM;
+        } else {
+            throw new RuntimeException("'" + type + "' is not a valid type of service");
+        }
+
         this.socket = new DatagramSocket(port);
     }
 
     // TODO share code with Service
-    void subscribeToLinker() throws IOException, ClassNotFoundException {
+    boolean subscribeToLinker() throws IOException, ClassNotFoundException {
+        byte[] buff = new byte[1024];
+
         linkers.forEach(System.out::println);
 
         // Use a random linker in the list
         MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] payload;
-        if (type.equals("time")) {
-            payload = new byte[]{
-                    ServiceType.SERVICE_TIME.getType()
-            };
-        } else if (type.equals("reply")) {
-            payload = new byte[]{
-                    ServiceType.SERVICE_REPLY.getType()
-            };
-        } else {
-            throw new RuntimeException(type + " is not a valid type of service");
-        }
+        byte[] payload = new byte[] {
+                this.serviceType.getType()
+        };
 
         // Request a specific service
-        byte[] buff = new Message(MessageType.REQUEST_SERVICE, MachineType.CLIENT, payload).toByteArray();
-
         DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+
+        packet.setData(new Message(
+                MessageType.REQUEST_SERVICE,
+                MachineType.CLIENT,
+                payload).toByteArray()
+        );
 
         socket.send(packet);
 
-        buff = new byte[1024];
+        // Reset packet
         packet = new DatagramPacket(buff, buff.length);
-//        packet.setLength(buff.length);
 
         // TODO add timeout
 
@@ -78,16 +87,21 @@ public class Client {
         while (true) {
             socket.receive(packet);
 
-            Message message = Message.fromByteArray(buff);
+            try {
+                Message message = Message.fromByteArray(buff);
+//                System.out.println(message);
 
-            if (message.getMessageType() == MessageType.RESPONSE) {
-                System.out.println("Get service address");
+                if (message.getMessageType() == MessageType.RESPONSE) {
+                    System.out.println("Get service address");
 
-                service = MachineAddress.fromByteArray(message.getPayload());
+                    service = MachineAddress.fromByteArray(message.getPayload());
 
-                System.out.println(service);
+                    System.out.println(service);
 
-                break;
+                    return true;
+                }
+            } catch(IOException | ClassNotFoundException e) {
+                System.out.println("The packet is corrupt");
             }
         }
     }
@@ -97,7 +111,7 @@ public class Client {
         Scanner keyboard = new Scanner(System.in);
         boolean exit = false;
         while (!exit) {
-            System.out.println("Enter command (quit to exit):");
+            System.out.println("Enter command or payload (quit to exit):");
             String input = keyboard.nextLine();
             if (input != null) {
                 System.out.println("Your input is : " + input);
@@ -105,40 +119,58 @@ public class Client {
                     System.out.println("Exit client");
                     exit = true;
                 } else {
-                    // TODO send "ask" for the specific service
-
-                    byte[] buff = new byte[128];
+                    byte[] buff = new byte[512];
+                    byte[] buffSend = null;
                     DatagramPacket packet = new DatagramPacket(buff, buff.length, service.getAddress(), service.getPort());
+
+                    if (serviceType == ServiceType.SERVICE_SUM) {
+                        String[] inputs = input.split(" ");
+                        if (inputs.length >= 2) {
+                            buffSend = new byte[] {
+                                    (byte) Integer.parseInt(inputs[0]),
+                                    (byte) Integer.parseInt(inputs[1])
+                            };
+                        }
+                    } else if (serviceType == ServiceType.SERVICE_REPLY) {
+                        buffSend = input.getBytes();
+                    }
+
+                    packet.setData(new Message(
+                            MessageType.REQUEST,
+                            MachineType.CLIENT,
+                            buffSend
+                    ).toByteArray());
 
                     socket.send(packet);
 
-                    while (true) {
-                        socket.receive(packet);
-                        Message message = Message.fromByteArray(buff);
+                    packet = new DatagramPacket(buff, buff.length);
+                    socket.receive(packet);
+                    Message message = Message.fromByteArray(buff);
 
-                        if (message.getMessageType() == MessageType.RESPONSE_TIME) {
-                            System.out.println("> Get time response");
+                    if (message.getMessageType() == MessageType.RESPONSE) {
+                        System.out.println("> Get response");
 
+                        if (serviceType == ServiceType.SERVICE_TIME) {
                             long time = ServiceTime.getResponseFromByteArray(message.getPayload());
+                            Date date = new Date(time);
 
-                            System.out.println(time);
-                            System.out.println(System.nanoTime());
+                            System.out.println("[i] Service time: " + date);
+                        } else if (serviceType == ServiceType.SERVICE_REPLY) {
+                            String rep = ServiceReply.getResponseFromByteArray(message.getPayload());
 
-                            break;
+                            System.out.println("[i] Service reply: " + rep);
+                        } else if (serviceType == ServiceType.SERVICE_SUM) {
+                            int sum = ServiceSum.getResponseFromByteArray(message.getPayload());
+
+                            System.out.println("[i] Service sum: " + sum);
                         }
                     }
-
-                    socket.close();
-
                 }
             }
         }
+
+        socket.close();
         keyboard.close();
-    }
-
-    // Send message to the service
-    private void send() {
-
     }
 
     public static void main(String... args) {
@@ -161,8 +193,9 @@ public class Client {
 
         try {
             Client client = new Client(linkers, type, port);
-            client.subscribeToLinker();
-            client.keyListener();
+            if (client.subscribeToLinker()) {
+                client.keyListener();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {

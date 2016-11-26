@@ -101,11 +101,16 @@ public abstract class Service {
      */
     private void handleRequest(Message message, DatagramPacket packet) throws IOException {
         byte[] buffRes = getResponse(message, packet); // polymorphism
-        packet.setData(new Message(
+
+        message = new Message(
                 MessageType.RESPONSE,
                 MachineType.SERVICE,
                 buffRes
-        ).toByteArray());
+        );
+
+        System.out.println(message);
+
+        packet.setData(message.toByteArray());
 
         socket.send(packet);
     }
@@ -120,7 +125,7 @@ public abstract class Service {
         socket.setSoTimeout(0);
         byte[] buff = new byte[512];
 
-        DatagramPacket packet = new DatagramPacket(buff, buff.length);
+        DatagramPacket packet;
 
         Message message;
 
@@ -128,12 +133,15 @@ public abstract class Service {
 
         // Listen for new messages
         while (true) {
+            // Reset the packet
+            packet = new DatagramPacket(buff, buff.length);
             socket.receive(packet);
 
             message = Message.fromByteArray(buff);
 
             // DEBUG
-            System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
+            System.out.println("New message [" + packet.getAddress().getHostName() + ":" + packet.getPort() + "]");
+            System.out.println(message);
 
             switch (message.getMessageType()) {
                 case REQUEST:
@@ -142,32 +150,17 @@ public abstract class Service {
                     handleRequest(message, packet);
                     break;
                 default:
-                    System.out.println(">>> Unknown message");
+                    System.out.println("> Unknown message");
             }
 
             // Reset the length of the packet before reuse
-            packet.setLength(buff.length);
+//            packet.setLength(buff.length);
         }
     }
 
     abstract byte[] getResponse(Message message, DatagramPacket packet);
 
     abstract ServiceType getServiceType();
-
-    /**
-     * Send a message
-     *
-     * @param packet
-     * @param message
-     */
-    private void sendMessage(DatagramPacket packet, Message message) throws IOException {
-        DatagramPacket packetToSend = new DatagramPacket(
-                message.getPayload(), message.getPayload().length, packet.getAddress(), packet.getPort());
-
-        DatagramSocket ds = new DatagramSocket();
-        ds.send(packetToSend);
-        ds.close();
-    }
 
     public static void main(String[] args) {
         System.out.println("- Service -");
@@ -193,8 +186,10 @@ public abstract class Service {
         try {
             if (type.equals("time")) {
                 service = new ServiceTime(linkers, port);
-            } else {
+            } else if (type.equals("reply")) {
                 service = new ServiceReply(linkers, port);
+            } else {
+                service = new ServiceSum(linkers, port);
             }
 
             if (service.handshake()) {

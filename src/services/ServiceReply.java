@@ -14,11 +14,23 @@ public class ServiceReply extends Service {
 
     @Override
     byte[] getResponse(Message message, DatagramPacket packet) {
-        return new byte[0];
+        // Reply in L33T 5P34K
+        return new String(message.getPayload())
+                .toUpperCase()
+                .replace("O", "0")
+                .replace("A", "4")
+                .replace("I", "1")
+                .replace("S", "5")
+                .replace("E", "3")
+                .getBytes();
     }
 
     @Override
     ServiceType getServiceType() {
         return ServiceType.SERVICE_REPLY;
+    }
+
+    public static String getResponseFromByteArray(byte[] response) {
+        return new String(response);
     }
 }

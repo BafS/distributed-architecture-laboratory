@@ -6,6 +6,7 @@ import util.MachineAddress;
 import java.net.DatagramPacket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.util.Calendar;
 import java.util.List;
 
 public class ServiceTime extends Service {
@@ -26,7 +27,7 @@ public class ServiceTime extends Service {
     @Override
     byte[] getResponse(Message message, DatagramPacket packet) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(System.nanoTime());
+        buffer.putLong(Calendar.getInstance().getTimeInMillis());
         return buffer.array();
     }
 
