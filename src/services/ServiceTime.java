@@ -1,12 +1,15 @@
 package services;
 
+import messages.Message;
 import util.MachineAddress;
 
+import java.net.DatagramPacket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class ServiceTime extends Service {
-    public ServiceTime(List<MachineAddress> linkers, final int port) {
+    public ServiceTime(List<MachineAddress> linkers, final int port) throws SocketException {
         super(linkers, port);
     }
 
@@ -21,7 +24,7 @@ public class ServiceTime extends Service {
      * @return byte[]
      */
     @Override
-    byte[] getResponse(byte[] message) {
+    byte[] getResponse(Message message, DatagramPacket packet) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(System.nanoTime());
         return buffer.array();

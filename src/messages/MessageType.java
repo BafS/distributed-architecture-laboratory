@@ -10,6 +10,8 @@ public enum MessageType {
 
     REQUEST_TIME((byte) 0x10, Byte.BYTES),
 
+    REQUEST((byte) 0x11, Byte.BYTES),
+
     ACK((byte) 0x5),
 
     RESPONSE((byte) 0x6),

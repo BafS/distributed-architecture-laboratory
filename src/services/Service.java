@@ -63,7 +63,6 @@ public abstract class Service {
 
         // Step 2 - We need the ACK packet //
 
-//        packet.setLength(buff.length);
         socket.setSoTimeout(timeout);
         Message message;
 
@@ -95,7 +94,27 @@ public abstract class Service {
     }
 
     /**
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handleRequest(Message message, DatagramPacket packet) throws IOException {
+        byte[] buffRes = getResponse(message, packet); // polymorphism
+        packet.setData(new Message(
+                MessageType.RESPONSE,
+                MachineType.SERVICE,
+                buffRes
+        ).toByteArray());
+
+        socket.send(packet);
+    }
+
+    /**
      * Listen for incoming message
+     *
+     * @throws IOException
+     * @throws ClassNotFoundException
      */
     void listen() throws IOException, ClassNotFoundException {
         socket.setSoTimeout(0);
@@ -115,18 +134,12 @@ public abstract class Service {
 
             // DEBUG
             System.out.println("New message from " + packet.getAddress().getHostName() + ":" + packet.getPort());
-            System.out.println("(message: " + message.getPayload() + ")");
 
             switch (message.getMessageType()) {
-                case REQUEST_TIME:
+                case REQUEST:
                     System.out.println("> Ask for the service function");
 
-//                    Service concretService = getServiceObject();
-//                    this.get
-
-//                    buff = this.getResponse(message.getPayload()); // polymorphism
-//                    message = new Message(type, buff);
-//                    sendMessage(packet, message);
+                    handleRequest(message, packet);
                     break;
                 default:
                     System.out.println(">>> Unknown message");
@@ -137,7 +150,7 @@ public abstract class Service {
         }
     }
 
-    abstract byte[] getResponse(final byte[] message);
+    abstract byte[] getResponse(Message message, DatagramPacket packet);
 
     abstract ServiceType getServiceType();
 
@@ -177,13 +190,13 @@ public abstract class Service {
         }
 
         Service service;
-        if (type.equals("time")) {
-            service = new ServiceTime(linkers, port);
-        } else {
-            service = new ServiceReply(linkers, port);
-        }
-
         try {
+            if (type.equals("time")) {
+                service = new ServiceTime(linkers, port);
+            } else {
+                service = new ServiceReply(linkers, port);
+            }
+
             if (service.handshake()) {
                 service.listen();
             }
