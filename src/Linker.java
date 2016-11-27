@@ -5,6 +5,7 @@ import util.MachineAddress;
 import util.MachineType;
 
 import java.io.EOFException;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
@@ -33,8 +34,23 @@ public class Linker {
 
     private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
 
+    private List<MachineAddress> linkers;
+
     public Linker(final int port) throws SocketException {
         socket = new DatagramSocket(port);
+        linkers = new LinkedList<>();
+
+        Properties properties = new Properties();
+        try {
+            properties.load(new FileInputStream("linkers.txt"));
+        } catch (IOException e) {
+
+        }
+
+        for(String key : properties.stringPropertyNames()) {
+            String value = properties.getProperty(key);
+            linkers.add(new MachineAddress("localhost", Integer.parseInt(value)));
+        }
     }
 
     /**
@@ -110,6 +126,43 @@ public class Linker {
     }
 
     /**
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handleServiceDown(Message message, DatagramPacket packet) throws IOException {
+        System.out.println("DATA = " + new String(message.getPayload()));
+        String mess = new String(message.getPayload());
+        String host = mess.split(":")[0].substring(1);
+        int port = new Integer(mess.split(":")[1]);
+        MachineAddress machineAddress = new MachineAddress(host, port);
+        socket.setSoTimeout(1000);
+        byte[] buff = "Are you there?".getBytes();
+        DatagramPacket tempDatagramPacket = new DatagramPacket(buff, buff.length, machineAddress.getAddress(), machineAddress.getPort());
+
+        try {
+            socket.send(tempDatagramPacket);
+
+            socket.receive(tempDatagramPacket);
+
+        } catch(SocketTimeoutException socketEx) {
+            // Service is down
+            System.out.println("Service is down indeed");
+            warnOtherLinkers(machineAddress);
+        }
+
+    }
+
+    private void warnOtherLinkers(MachineAddress serviceDownMachineAddress) throws IOException {
+        for(MachineAddress linkerAddress : linkers) {
+//            byte[] buff;
+//            socket.send(new DatagramPacket(buff, buff.length, linkerAddress.getAddress(), linkerAddress.getPort()));
+        }
+    }
+
+
+    /**
      * Listen for new messages from clients or services
      *
      * @throws IOException
@@ -134,7 +187,8 @@ public class Linker {
             try {
                 message = Message.fromByteArray(buff);
             } catch (EOFException e) {
-                System.out.println(e.getStackTrace());
+                System.out.println("In catch");
+                e.printStackTrace();
                 continue;
             }
 
@@ -149,6 +203,9 @@ public class Linker {
 
                 case REQUEST_SERVICE:
                     handleRequestService(message, packet);
+                    break;
+                case SERVICE_DOWN:
+                    handleServiceDown(message, packet);
                     break;
                 default:
                     System.out.println("> Got an unknown message");

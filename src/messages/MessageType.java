@@ -5,5 +5,6 @@ public enum MessageType {
     REQUEST_SERVICE,
     REQUEST,
     ACK,
-    RESPONSE
+    RESPONSE,
+    SERVICE_DOWN
 }

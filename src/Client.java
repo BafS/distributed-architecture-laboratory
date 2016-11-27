@@ -16,11 +16,11 @@ import java.util.Scanner;
 
 /**
  * The client knows the linkers and want to use a service
- *
+ * <p>
  * To use a service, the client firstly asks randomly one of the linker to give him the host and
  * port of the service.
  * If the service does not reply, the client will ask again, randomly, a linker.
- *
+ * <p>
  * 1. Ask a random linker the address of a specific service [ACK_SERVICE-TYPE]
  * 2a. if OK [ACK_SERVICE | message]
  * 2b. if Error -> goto 1.
@@ -63,7 +63,7 @@ public class Client {
         // Use a random linker in the list
         MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
 
-        byte[] payload = new byte[] {
+        byte[] payload = new byte[]{
                 this.serviceType.getType()
         };
 
@@ -100,7 +100,7 @@ public class Client {
 
                     return true;
                 }
-            } catch(IOException | ClassNotFoundException e) {
+            } catch (IOException | ClassNotFoundException e) {
                 System.out.println("The packet is corrupt");
             }
         }
@@ -126,7 +126,7 @@ public class Client {
                     if (serviceType == ServiceType.SERVICE_SUM) {
                         String[] inputs = input.split(" ");
                         if (inputs.length >= 2) {
-                            buffSend = new byte[] {
+                            buffSend = new byte[]{
                                     (byte) Integer.parseInt(inputs[0]),
                                     (byte) Integer.parseInt(inputs[1])
                             };
@@ -144,7 +144,34 @@ public class Client {
                     socket.send(packet);
 
                     packet = new DatagramPacket(buff, buff.length);
-                    socket.receive(packet);
+                    socket.setSoTimeout(1000);
+                    try {
+                        socket.receive(packet);
+                    } catch (SocketTimeoutException e) {
+                        // Send to linker
+                        // Use a random linker in the list
+                        MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
+
+                        packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+
+                        System.out.println("Service down");
+
+                        // Send SERVICE_DOWN message to a randomly selected linker
+                        packet.setData(new Message(
+                                MessageType.SERVICE_DOWN,
+                                MachineType.CLIENT,
+                                this.service.toString().getBytes()).toByteArray()
+                        );
+
+                        socket.send(packet);
+
+                        // Reset packet
+                        packet = new DatagramPacket(buff, buff.length);
+                        continue;
+                    }
+                    socket.setSoTimeout(0);
+
+
                     Message message = Message.fromByteArray(buff);
 
                     if (message.getMessageType() == MessageType.RESPONSE) {
