@@ -27,9 +27,9 @@ public class Message implements Serializable, ByteArrayable {
         return payload;
     }
 
-    public MachineType getMachineType() {
-        return machineType;
-    }
+//    public MachineType getMachineType() {
+//        return machineType;
+//    }
 
     public MessageType getMessageType() {
         return messageType;

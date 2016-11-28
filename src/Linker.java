@@ -231,9 +231,10 @@ public class Linker {
         Message message;
 
         // Listen for new messages
-        while (true) {
-            System.out.println("[i] listen for new messages...");
 
+        System.out.println("[i] Listen for new messages (on " + socket.getLocalSocketAddress() + ")...");
+
+        while (true) {
             // Reset packet before reuse
             packet = new DatagramPacket(buff, buff.length);
             socket.receive(packet);
@@ -268,7 +269,7 @@ public class Linker {
                     removeService(message, packet);
                     break;
                 default:
-                    System.out.println("> Got an unknown message");
+                    System.out.println("> Got an unknown message !");
             }
         }
     }
