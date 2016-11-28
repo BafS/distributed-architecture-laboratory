@@ -164,29 +164,50 @@ public class Linker {
     }
 
     /**
+     * Send new list of services to linkers
+     *
      * @param message
      * @param packet
      * @throws IOException
      */
     private void handleServiceDown(Message message, DatagramPacket packet) throws IOException {
-        System.out.println("DATA = " + new String(message.getPayload()));
-        String mess = new String(message.getPayload());
-        String host = mess.split(":")[0].substring(1);
-        int port = new Integer(mess.split(":")[1]);
-        MachineAddress machineAddress = new MachineAddress(host, port);
-        socket.setSoTimeout(1000);
-        byte[] buff = "Are you there?".getBytes();
-        DatagramPacket tempDatagramPacket = new DatagramPacket(buff, buff.length, machineAddress.getAddress(), machineAddress.getPort());
+        System.out.println(">>> SERVICE DOWN");
+
+        // Send an ACK to the client to show that we received the request
+        packet.setData(new Message(
+                MessageType.ACK,
+                MachineType.LINKER,
+                null
+        ).toByteArray());
+        socket.send(packet);
 
         try {
-            socket.send(tempDatagramPacket);
+            MachineAddress possibleDeadService = MachineAddress.fromByteArray(message.getPayload());
 
-            socket.receive(tempDatagramPacket);
+            byte[] buff = new byte[512];
+            DatagramPacket tempPacket = new DatagramPacket(
+                    buff, buff.length, possibleDeadService.getAddress(), possibleDeadService.getPort());
 
-        } catch (SocketTimeoutException socketEx) {
-            // Service is down
-            System.out.println("Service is down indeed");
-            warnOtherLinkers(machineAddress, message, packet);
+            tempPacket.setData(new Message(
+                    MessageType.PING,
+                    MachineType.LINKER,
+                    null
+            ).toByteArray());
+
+            socket.setSoTimeout(1000);
+            try {
+                socket.send(tempPacket);
+
+                socket.receive(tempPacket);
+
+            } catch (SocketTimeoutException socketEx) {
+                // Service is down
+                System.out.println("Service is down indeed");
+                warnOtherLinkers(possibleDeadService, message, packet);
+            }
+        } catch (ClassNotFoundException e) {
+            System.out.println("[i] Error, invalid packet");
+            return;
         }
     }
 
@@ -224,14 +245,13 @@ public class Linker {
      * @throws ClassNotFoundException
      */
     public void listen() throws IOException, ClassNotFoundException {
-        byte[] buff = new byte[512];
+        byte[] buff = new byte[1024];
 
         DatagramPacket packet;
 
         Message message;
 
         // Listen for new messages
-
         System.out.println("[i] Listen for new messages (on " + socket.getLocalSocketAddress() + ")...");
 
         while (true) {
@@ -243,7 +263,7 @@ public class Linker {
             try {
                 message = Message.fromByteArray(buff);
             } catch (EOFException e) {
-                System.out.println("In catch");
+                System.out.println("[i] Message could not be decoded !");
                 e.printStackTrace();
                 continue;
             }

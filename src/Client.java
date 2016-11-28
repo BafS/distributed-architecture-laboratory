@@ -14,6 +14,7 @@ import java.net.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The client knows the linkers and want to use a service
@@ -55,6 +56,40 @@ public class Client {
         }
 
         this.socket = new DatagramSocket(port);
+    }
+
+    void handleNotRespondingService() throws IOException, ClassNotFoundException {
+        System.out.println("[i] Service down");
+
+        boolean isSent = false;
+        byte[] buff = new Message(
+                MessageType.SERVICE_DOWN,
+                MachineType.CLIENT,
+                this.service.toByteArray()
+        ).toByteArray();
+
+        // Send to linker
+        // Use a random linker in the list
+        while (!isSent) {
+            MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
+            DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+
+            packet.setData(buff);
+            socket.send(packet);
+
+            socket.setSoTimeout(timeout);
+
+            try {
+                socket.receive(packet);
+
+                Message message = Message.fromByteArray(buff);
+                if (message.getMessageType() == MessageType.ACK) {
+                    isSent = true;
+                }
+            } catch (SocketTimeoutException e) {
+                System.out.println("[i] Timeout, will try to contact an other linker");
+            }
+        }
     }
 
     // TODO add timeout
@@ -164,25 +199,8 @@ public class Client {
                     try {
                         socket.receive(packet);
                     } catch (SocketTimeoutException e) {
-                        // Send to linker
-                        // Use a random linker in the list
-                        MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
-
-                        packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
-
-                        System.out.println("[i] Service down");
-
-                        // Send SERVICE_DOWN message to a randomly selected linker
-                        packet.setData(new Message(
-                                MessageType.SERVICE_DOWN,
-                                MachineType.CLIENT,
-                                this.service.toByteArray()
-                                ).toByteArray()
-                        );
-
-                        socket.send(packet);
-
-                        continue;
+                        handleNotRespondingService();
+                        return;
                     }
 
                     socket.setSoTimeout(0);
@@ -231,8 +249,11 @@ public class Client {
             List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt")); // TODO file name: shared const
 
             Client client = new Client(linkers, type, port);
-            if (client.subscribeToLinker()) {
-                client.keyListener();
+
+            while (true) {
+                if (client.subscribeToLinker()) {
+                    client.keyListener();
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();

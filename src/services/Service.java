@@ -87,7 +87,7 @@ public abstract class Service {
         } catch (SocketTimeoutException | ClassNotFoundException e) {
             System.out.println("[i] Timeout (" + timeout + "ms)");
             // We increment the timeout to not saturate the network (in case the network was not 100% safe)
-            timeout = Math.min((int) (timeout * 1.25), timeout * 10);
+            timeout = Math.min((int) (timeout * 1.1), timeout * 10);
             return handshake();
         }
 
@@ -113,6 +113,24 @@ public abstract class Service {
 
         packet.setData(message.toByteArray());
 
+        socket.send(packet);
+    }
+
+    /**
+     * Handle ping message to see if the service is alive
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handlePing(Message message, DatagramPacket packet) throws IOException {
+        message = new Message(
+                MessageType.PONG,
+                MachineType.SERVICE,
+                null
+        );
+
+        packet.setData(message.toByteArray());
         socket.send(packet);
     }
 
@@ -149,6 +167,9 @@ public abstract class Service {
                     System.out.println("> Ask for the service function");
 
                     handleRequest(message, packet);
+                    break;
+                case PONG:
+                    handlePing(message, packet);
                     break;
                 default:
                     System.out.println("> Unknown message");

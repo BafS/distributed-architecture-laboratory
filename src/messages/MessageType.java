@@ -1,6 +1,8 @@
 package messages;
 
 public enum MessageType {
+    PING,
+    PONG,
     REGISTER_SERVICE,
     REQUEST_SERVICE,
     REQUEST,
