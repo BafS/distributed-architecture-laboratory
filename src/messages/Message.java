@@ -59,4 +59,8 @@ public class Message implements Serializable, ByteArrayable {
                 ", payload=" + Arrays.toString(payload) +
                 '}';
     }
+
+    public void setPayload(byte[] payload) {
+        this.payload = payload;
+    }
 }

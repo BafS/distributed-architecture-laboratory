@@ -5,6 +5,7 @@ import util.ConfigReader;
 import util.MachineAddress;
 import util.MachineType;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
@@ -52,34 +53,17 @@ public class Linker {
     }
 
     /**
-     * Handle register service request
+     * Handle register service request from a service
      *
      * @param message
      * @param packet
      * @throws IOException
      */
-    private void handleRegisterService(Message message, DatagramPacket packet) throws IOException {
+    private void handleFirstRegisterService(Message message, DatagramPacket packet) throws IOException {
+        handleRegisterService(message, packet);
+
         ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
 
-        System.out.println("> Register service (" + serviceType + ")");
-
-        // If the set is empty, we create the new set
-        if (!services.containsKey(serviceType)) {
-            Set<MachineAddress> set = new HashSet<>();
-            services.put(serviceType, set);
-
-        }
-        String serviceHost = packet.getAddress().getHostAddress();
-        int servicePort = packet.getPort();
-        // We add the machine to the set
-        services.get(serviceType).add(
-                new MachineAddress(
-                        packet.getAddress().getHostAddress(),
-                        packet.getPort()
-                ));
-
-        System.out.println("[i] Services:");
-        printServices();
         // Send an ACK to show that the linker is alive
         packet.setData(new Message(
                 MessageType.ACK,
@@ -89,22 +73,67 @@ public class Linker {
 
         socket.send(packet);
 
+        MachineAddress newService = new MachineAddress(
+                packet.getAddress().getHostAddress(),
+                packet.getPort()
+        );
+
+        // Concat [service type | service object]
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write( serviceType.getType() );
+        outputStream.write( newService.toByteArray() );
+
         // Send service to other linkers
-//        byte[] buff = new byte[512];
-//        for (MachineAddress linkerAddress : linkers) {
-//            DatagramPacket linkerPacket = new DatagramPacket(buff, buff.length, linkerAddress.getAddress(), linkerAddress.getPort());
-//            linkerPacket.setData(new Message(
-//                    MessageType.REGISTER_SERVICE_FROM_LINKER,
-//                    MachineType.LINKER,
-//                    new String(serviceHost + servicePort).getBytes() // THIS IS WRONG, SHOULD SEND SERVICETYPE + SERVICEADDRESS
-//            ).toByteArray()
-//            );
-//            socket.send(linkerPacket);
-//        }
+        sendForEachOtherLinker(
+                new Message(
+                        MessageType.REGISTER_SERVICE,
+                        MachineType.LINKER,
+                        outputStream.toByteArray()
+                ),
+                packet
+        );
     }
 
-    private void handleAddService(Message message, DatagramPacket packet) {
+    /**
+     * Handle register service when it comes from a linker
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handleLinkerRegisterService(Message message, DatagramPacket packet) throws IOException {
+        try {
+            // We read the [service type | machine address]
+            byte[] buff = new byte[message.getPayload().length - 1];
+            System.arraycopy(message.getPayload(), 1, buff, 0, message.getPayload().length - 1);
+            MachineAddress ma = MachineAddress.fromByteArray(buff);
+            packet.setAddress(ma.getAddress());
+            packet.setPort(ma.getPort());
+
+            ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
+
+            // We rebuild the payload message just with the type
+            // (because the address is now used in the socket, it's to avoid duplication)
+            message.setPayload(
+                    new byte[]{ serviceType.getType() }
+            );
+            handleRegisterService(message, packet);
+        } catch (ClassNotFoundException e) {
+            System.out.println("[i] Message malformed");
+        }
+    }
+
+    /**
+     * Handle service, used by both handleLinkerRegisterService and handleFirstRegisterService methods
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handleRegisterService(Message message, DatagramPacket packet) throws IOException {
         ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
+
+        System.out.println("[i] Register service (" + serviceType + ")");
 
         // If the set is empty, we create the new set
         if (!services.containsKey(serviceType)) {
@@ -114,15 +143,12 @@ public class Linker {
         }
 
         // We add the machine to the set
-        services.get(serviceType).add(
-                new MachineAddress(
-                        packet.getAddress().getHostAddress(),
-                        packet.getPort()
-                ));
-
-        printServices();
+        MachineAddress newService = new MachineAddress(
+                packet.getAddress().getHostAddress(),
+                packet.getPort()
+        );
+        services.get(serviceType).add(newService);
     }
-
 
     /**
      * Handle request service request
@@ -135,7 +161,7 @@ public class Linker {
         ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
 
         if (!services.isEmpty()) {
-            System.out.println("> A client asked for a service");
+            System.out.println("[>] A client asked for a service (" + serviceType.name() + ")");
             if (services.containsKey(serviceType)) {
                 System.out.println(serviceType);
 
@@ -145,6 +171,7 @@ public class Linker {
 
                 if (specificServices.size() <= 0) {
                     System.out.println("[i] No service available");
+                    // We cannot response, the client will ask again soon.
                     return;
                 }
 
@@ -164,16 +191,23 @@ public class Linker {
     }
 
     private void warnOtherLinkers(MachineAddress serviceDownMachineAddress, Message message, DatagramPacket packet) throws IOException {
+        sendForEachOtherLinker(
+                new Message(
+                    MessageType.REMOVE_SERVICE,
+                    MachineType.LINKER,
+                        serviceDownMachineAddress.toByteArray()
+                ),
+                packet
+        );
+    }
+
+    private void sendForEachOtherLinker(Message message, DatagramPacket packet) throws IOException {
         byte[] buff = new byte[512];
 
         for (MachineAddress linker : linkers) {
             packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 
-            packet.setData(new Message(
-                    MessageType.REMOVE_SERVICE,
-                    MachineType.LINKER,
-                    serviceDownMachineAddress.toString().getBytes()).toByteArray()
-            );
+            packet.setData(message.toByteArray());
 
             socket.send(packet);
         }
@@ -199,7 +233,7 @@ public class Linker {
      * @throws IOException
      */
     private void handleServiceDown(Message message, DatagramPacket packet) throws IOException {
-        System.out.println(">>> SERVICE DOWN");
+        System.out.println("[i] Service down !");
 
         // Send an ACK to the client to show that we received the request
         packet.setData(new Message(
@@ -299,10 +333,15 @@ public class Linker {
 
             switch (message.getMessageType()) {
                 case REGISTER_SERVICE:
-                    handleRegisterService(message, packet);
-                    break;
-                case REGISTER_SERVICE_FROM_LINKER:
-                    handleAddService(message, packet);
+                    if (message.getMachineType() == MachineType.LINKER) {
+                        handleLinkerRegisterService(message, packet);
+                    } else {
+                        handleFirstRegisterService(message, packet);
+                    }
+
+                    System.out.println("[i] Services:");
+                    printServices();
+
                     break;
                 case REQUEST_SERVICE:
                     handleRequestService(message, packet);
@@ -319,12 +358,21 @@ public class Linker {
         }
     }
 
+    /**
+     * Helper to get a random service from the list
+     *
+     * @param services
+     * @return
+     */
     public static MachineAddress getAny(final Set<MachineAddress> services) {
         int num = (int) (Math.random() * services.size());
         for (MachineAddress ma : services) if (--num < 0) return ma;
         throw new AssertionError();
     }
 
+    /**
+     * Helper to print the list of current services
+     */
     private void printServices() {
         services.forEach((m, a) -> System.out.println("- " + a));
     }
