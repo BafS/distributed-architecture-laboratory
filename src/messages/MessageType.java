@@ -6,5 +6,7 @@ public enum MessageType {
     REQUEST,
     ACK,
     RESPONSE,
-    SERVICE_DOWN
+    SERVICE_DOWN,
+    REMOVE_SERVICE,
+    REGISTER_SERVICE_FROM_LINKER
 }
