@@ -7,8 +7,8 @@ import java.io.*;
 import java.util.Arrays;
 
 /**
- * Message to communicate between instances on the network.
- * Messages are serializable to be able to get a binary buffer to send to the network
+ * Message used to communicate between instances on the network.
+ * Messages are serializable in order to be able to get a binary buffer to send to the network
  */
 public class Message implements Serializable, ByteArrayable {
 

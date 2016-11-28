@@ -12,32 +12,32 @@ import java.net.*;
 import java.util.*;
 
 /**
- * Linker are the bridge between clients and service
- * Linkers addresses are known from the clients and the services.
+ * Linkers are the bridge between clients and services
+ * Linker addresses are known by all clients and services.
  * <p>
- * Linker communicate to clients with messages (Message)
+ * Linkers communicate to clients with messages (Message)
  * <p>
- * When a linker is halt or stopped by error, the linker automatically tries to restart
+ * When a linker is halted or stopped by error, the linker automatically tries to restart
  * <p>
- * Linker cannot be added after the initialization
+ * Linkers cannot be added after the initialization
  * <p>
- * Client can send
+ * Clients can send
  * REQUEST_SERVICE
  * - Send the service address
  * <p>
  * NOT_RESPONDING_SERVICE
- * - Check if the service is dead and remove the service from the list
- * - If true: Send his table to the other linkers
+ * - Checks if the service is dead and if so removes the service from the list
+ * - If true: Send his updated table to the other linkers
  */
 public class Linker {
 
     /**
-     * UDP socket that we will use to send a receive messages
+     * UDP socket that will be used to send and receive messages
      */
     private final DatagramSocket socket;
 
     /**
-     * List of all linkers (except our self)
+     * List of all linkers (except itself)
      */
     private List<MachineAddress> linkers;
 
@@ -192,7 +192,7 @@ public class Linker {
     }
 
     /**
-     * Send new list of services to linkers
+     * Send new list of services to other linkers
      *
      * @param message
      * @param packet
@@ -284,7 +284,7 @@ public class Linker {
             socket.setSoTimeout(0); // Be sure to listen for ever
             socket.receive(packet);
 
-            // Continue, even if the packet is corrupt and cannot be unserialized
+            // Continue, even if the packet is corrupted and cannot be unserialized
             try {
                 message = Message.fromByteArray(buff);
             } catch (EOFException e) {

@@ -16,11 +16,11 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * The client knows the linkers and want to use a service
+ * The client knows the linkers and wants to use a service
  *
- * To use a service, the client firstly asks randomly one of the linker to give him the host and
- * port of the service.
- * If the service does not reply, the client will ask again, randomly, a linker.
+ * To use a service, the client firstly asks one of the linkers (chosen at random) to give him the host and
+ * port of the service it wants.
+ * If the service does not reply, the client will ask another linker again, chosen at random.
  *
  * 1. Ask a random linker the address of a specific service [ACK_SERVICE-TYPE]
  * 2a. if OK [ACK_SERVICE | message]
@@ -29,7 +29,7 @@ import java.util.Scanner;
 public class Client {
 
     /**
-     * UDP socket that we will use to send a receive messages
+     * UDP socket that will be used to send and receive messages
      */
     private DatagramSocket socket;
 
@@ -165,7 +165,7 @@ public class Client {
 
 
     /**
-     * Listen key to interact with the specific service
+     * Listens to key to interact with the specific service
      *
      * (source of the key listener: https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console)
      *

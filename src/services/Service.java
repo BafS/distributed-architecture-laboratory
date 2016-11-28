@@ -16,11 +16,11 @@ import java.net.SocketTimeoutException;
 import java.util.List;
 
 /**
- * At initialization, a service will register himself to a random linker (sending him the host,
+ * At initialization, a service will register itself to a random linker (sending him the host,
  * port and type of the service).
- * Then, the service will just listen for new messages and reply.
+ * Then, the service listens for new messages and replies.
  *
- * Multiple types of services exists.
+ * Multiple types of services exist.
  * Automatically restart on error.
  *
  * Handshake:
@@ -30,7 +30,7 @@ import java.util.List;
 public abstract class Service {
 
     /**
-     * UDP socket that we will use to send a receive messages
+     * UDP socket that will be used to send and receive messages
      */
     private final DatagramSocket socket;
 
@@ -47,7 +47,7 @@ public abstract class Service {
     }
 
     /**
-     * At initialization, service need to register himself to one of the linkers
+     * At initialization, service need to register itself to one of the linkers
      */
     boolean handshake() throws IOException {
 //        System.out.println("[i] Linkers:");
@@ -57,7 +57,7 @@ public abstract class Service {
         MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
         System.out.println("[i] Selected linker: " + linker);
 
-        // We send a REGISTER_SERVICE with the service type
+        // Sends a REGISTER_SERVICE with the service type
         byte[] buff = new byte[512];
         DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
         packet.setData(new Message(
@@ -68,7 +68,7 @@ public abstract class Service {
 
         socket.send(packet);
 
-        // Step 2 - We need the ACK packet //
+        // Step 2 - Needs the ACK packet //
 
         socket.setSoTimeout(timeout);
         Message message;
@@ -78,7 +78,7 @@ public abstract class Service {
         try {
             socket.receive(packet);
 
-            // Continue, even if the packet is corrupt and cannot be unserialized
+            // Continue, even if the packet is corrupted and cannot be unserialized
             try {
                 message = Message.fromByteArray(buff);
             } catch (EOFException e) {
@@ -92,7 +92,7 @@ public abstract class Service {
             }
         } catch (SocketTimeoutException | ClassNotFoundException e) {
             System.out.println("[i] Timeout (" + timeout + "ms)");
-            // We increment the timeout to not saturate the network (in case the network was not 100% safe)
+            // Increment the timeout in order to not saturate the network (in case the network isn't 100% safe)
             timeout = Math.min((int) (timeout * 1.1), timeout * 10);
             return handshake();
         }
@@ -102,7 +102,7 @@ public abstract class Service {
 
     /**
      * Handle request message
-     * Uses the response of the concrete service and send it to the client
+     * Uses the response of the concrete service and sends it to the client
      *
      * @param message
      * @param packet
@@ -144,7 +144,7 @@ public abstract class Service {
     }
 
     /**
-     * Listen for incoming message and dispatch them
+     * Listens for incoming messages and dispatches them
      *
      * @throws IOException
      * @throws ClassNotFoundException
@@ -189,7 +189,7 @@ public abstract class Service {
     }
 
     /**
-     * Each service has its own reponse to send and must implements a getResponse
+     * Each service has its own response to send and must implement the getResponse method
      *
      * @param message
      * @param packet
