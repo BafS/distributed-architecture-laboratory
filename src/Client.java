@@ -14,7 +14,6 @@ import java.net.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.TimeoutException;
 
 /**
  * The client knows the linkers and want to use a service
@@ -29,15 +28,24 @@ import java.util.concurrent.TimeoutException;
  */
 public class Client {
 
+    /**
+     * UDP socket that we will use to send a receive messages
+     */
     private DatagramSocket socket;
 
-    // Type of service wanted
+    /**
+     * The service type wanted
+     */
     private final ServiceType serviceType;
 
-    // The list of all existing linkers (cannot change)
+    /**
+     * The list of all existing linkers (cannot change)
+     */
     private final List<MachineAddress> linkers;
 
-    // The connected service
+    /**
+     * The connected service
+     */
     private MachineAddress service;
 
     private int timeout = 500;
@@ -92,7 +100,13 @@ public class Client {
         }
     }
 
-    // TODO add timeout
+    /**
+     * Subscribe client to a random linker
+     *
+     * @return
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     boolean subscribeToLinker() throws IOException, ClassNotFoundException {
         byte[] buff = new byte[1024];
 
@@ -133,7 +147,6 @@ public class Client {
 
             try {
                 Message message = Message.fromByteArray(buff);
-//                System.out.println(message);
 
                 if (message.getMessageType() == MessageType.RESPONSE) {
                     System.out.println("[i] Get service address");
@@ -150,7 +163,15 @@ public class Client {
         }
     }
 
-    // https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console
+
+    /**
+     * Listen key to interact with the specific service
+     *
+     * (source of the key listener: https://stackoverflow.com/questions/27381021/detect-a-key-press-in-console)
+     *
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     public void keyListener() throws IOException, ClassNotFoundException {
         Scanner keyboard = new Scanner(System.in);
         boolean exit = false;
@@ -163,11 +184,15 @@ public class Client {
                     System.out.println("Exit client");
                     exit = true;
                 } else {
+                    //
+                    // First, read the input and send it
+                    //
                     byte[] buff = new byte[512];
                     byte[] buffSend = null;
                     DatagramPacket packet = new DatagramPacket(buff, buff.length, service.getAddress(), service.getPort());
 
                     if (serviceType == ServiceType.SERVICE_SUM) {
+                        // Service sum needs 2 numbers
                         String[] inputs = input.split(" ");
                         if (inputs.length >= 2) {
                             try {
@@ -181,6 +206,7 @@ public class Client {
                             }
                         }
                     } else if (serviceType == ServiceType.SERVICE_REPLY) {
+                        // Service reply needs a string
                         buffSend = input.getBytes();
                     }
 
@@ -192,10 +218,11 @@ public class Client {
 
                     socket.send(packet);
 
+                    //
+                    // Secondly, wait for an answer and read it
+                    //
                     packet = new DatagramPacket(buff, buff.length);
-
                     socket.setSoTimeout(timeout);
-
                     try {
                         socket.receive(packet);
                     } catch (SocketTimeoutException e) {
@@ -204,26 +231,26 @@ public class Client {
                     }
 
                     socket.setSoTimeout(0);
-
-
                     Message message = Message.fromByteArray(buff);
 
+                    // Dispatch responses
                     if (message.getMessageType() == MessageType.RESPONSE) {
                         System.out.println("> Get response");
 
-                        if (serviceType == ServiceType.SERVICE_TIME) {
-                            long time = ServiceTime.getResponseFromByteArray(message.getPayload());
-                            Date date = new Date(time);
-
-                            System.out.println("[i] Service time: " + date);
-                        } else if (serviceType == ServiceType.SERVICE_REPLY) {
-                            String rep = ServiceReply.getResponseFromByteArray(message.getPayload());
-
-                            System.out.println("[i] Service reply: " + rep);
-                        } else if (serviceType == ServiceType.SERVICE_SUM) {
-                            int sum = ServiceSum.getResponseFromByteArray(message.getPayload());
-
-                            System.out.println("[i] Service sum: " + sum);
+                        switch (serviceType) {
+                            case SERVICE_TIME:
+                                final long time = ServiceTime.getResponseFromByteArray(message.getPayload());
+                                final Date date = new Date(time);
+                                System.out.println("[i] Service time: " + date);
+                                break;
+                            case SERVICE_REPLY:
+                                final String rep = ServiceReply.getResponseFromByteArray(message.getPayload());
+                                System.out.println("[i] Service reply: " + rep);
+                                break;
+                            case SERVICE_SUM:
+                                final int sum = ServiceSum.getResponseFromByteArray(message.getPayload());
+                                System.out.println("[i] Service sum: " + sum);
+                                break;
                         }
                     }
                 }
@@ -248,9 +275,9 @@ public class Client {
         try {
             List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt")); // TODO file name: shared const
 
-            Client client = new Client(linkers, type, port);
-
             while (true) {
+                Client client = new Client(linkers, type, port);
+
                 if (client.subscribeToLinker()) {
                     client.keyListener();
                 }

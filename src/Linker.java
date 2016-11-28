@@ -31,10 +31,19 @@ import java.util.*;
  */
 public class Linker {
 
+    /**
+     * UDP socket that we will use to send a receive messages
+     */
     private final DatagramSocket socket;
 
+    /**
+     * List of all linkers (except our self)
+     */
     private List<MachineAddress> linkers;
 
+    /**
+     * Set of machines for each type of service
+     */
     private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
 
     public Linker(final int port, List<MachineAddress> otherLinkers) throws SocketException {

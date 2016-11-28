@@ -29,8 +29,14 @@ import java.util.List;
  */
 public abstract class Service {
 
+    /**
+     * UDP socket that we will use to send a receive messages
+     */
     private final DatagramSocket socket;
 
+    /**
+     * List of all linkers
+     */
     private List<MachineAddress> linkers;
 
     private int timeout = 500;
@@ -95,6 +101,8 @@ public abstract class Service {
     }
 
     /**
+     * Handle request message
+     * Uses the response of the concrete service and send it to the client
      *
      * @param message
      * @param packet
@@ -117,7 +125,8 @@ public abstract class Service {
     }
 
     /**
-     * Handle ping message to see if the service is alive
+     * Handle ping message
+     * Useful to see if the service is still alive
      *
      * @param message
      * @param packet
@@ -135,7 +144,7 @@ public abstract class Service {
     }
 
     /**
-     * Listen for incoming message
+     * Listen for incoming message and dispatch them
      *
      * @throws IOException
      * @throws ClassNotFoundException
@@ -144,11 +153,10 @@ public abstract class Service {
         socket.setSoTimeout(0);
         byte[] buff = new byte[512];
 
-        DatagramPacket packet;
-
-        Message message;
-
         System.out.println("[i] Listen for new messages...");
+
+        DatagramPacket packet;
+        Message message;
 
         // Listen for new messages
         while (true) {
@@ -174,27 +182,38 @@ public abstract class Service {
                 default:
                     System.out.println("> Unknown message");
             }
-
-            // Reset the length of the packet before reuse
-//            packet.setLength(buff.length);
         }
+
+        // The socket should be closed at the end
+//        socket.close();
     }
 
+    /**
+     * Each service has its own reponse to send and must implements a getResponse
+     *
+     * @param message
+     * @param packet
+     * @return
+     */
     abstract byte[] getResponse(Message message, DatagramPacket packet);
 
+    /**
+     * To know the type of the concrete service
+     *
+     * @return
+     */
     abstract ServiceType getServiceType();
 
     public static void main(String[] args) {
         System.out.println("- Service -");
 
-        // TODO -> split main in each service ?
-
         if (args.length < 2) {
             System.out.println("Usage: java service <type> <port>");
+            System.out.println("<type> can be 'sum', 'reply' or 'time'");
             return;
         }
 
-        final String type = args[0];
+        final String type = args[0].toLowerCase();
         final int port = Integer.parseInt(args[1]);
 
         Service service;
@@ -205,8 +224,12 @@ public abstract class Service {
                 service = new ServiceTime(linkers, port);
             } else if (type.equals("reply")) {
                 service = new ServiceReply(linkers, port);
-            } else {
+            } else if (type.equals("sum")) {
                 service = new ServiceSum(linkers, port);
+            } else {
+                System.out.println("Invalid <type> !");
+                System.exit(0);
+                return;
             }
 
             if (service.handshake()) {
