@@ -2,16 +2,17 @@ package services;
 
 import messages.Message;
 import messages.MessageType;
+import util.ConfigReader;
 import util.MachineAddress;
 import util.MachineType;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -83,10 +84,10 @@ public abstract class Service {
                 System.out.println("[i] Handshake ok");
                 return true;
             }
-        } catch(SocketTimeoutException | ClassNotFoundException e) {
+        } catch (SocketTimeoutException | ClassNotFoundException e) {
             System.out.println("[i] Timeout (" + timeout + "ms)");
             // We increment the timeout to not saturate the network (in case the network was not 100% safe)
-            timeout = Math.min((int) (timeout * 1.25), timeout * 10);
+            timeout = Math.min((int) (timeout * 1.1), timeout * 10);
             return handshake();
         }
 
@@ -112,6 +113,24 @@ public abstract class Service {
 
         packet.setData(message.toByteArray());
 
+        socket.send(packet);
+    }
+
+    /**
+     * Handle ping message to see if the service is alive
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void handlePing(Message message, DatagramPacket packet) throws IOException {
+        message = new Message(
+                MessageType.PONG,
+                MachineType.SERVICE,
+                null
+        );
+
+        packet.setData(message.toByteArray());
         socket.send(packet);
     }
 
@@ -149,6 +168,9 @@ public abstract class Service {
 
                     handleRequest(message, packet);
                     break;
+                case PONG:
+                    handlePing(message, packet);
+                    break;
                 default:
                     System.out.println("> Unknown message");
             }
@@ -168,22 +190,17 @@ public abstract class Service {
         // TODO -> split main in each service ?
 
         if (args.length < 2) {
-            System.out.println("Usage: java service <type> <port> <list of linkers>");
+            System.out.println("Usage: java service <type> <port>");
             return;
         }
 
-        List<MachineAddress> linkers = new ArrayList<>();
-        String type = args[0];
-        int port = Integer.parseInt(args[1]);
-
-        // 127.0.0.1:8080,127.0.0.1:8090
-        for (String info : args[2].split(",")) {
-            String[] token = info.split(":");
-            linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
-        }
+        final String type = args[0];
+        final int port = Integer.parseInt(args[1]);
 
         Service service;
         try {
+            List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt")); // TODO file name: shared const
+
             if (type.equals("time")) {
                 service = new ServiceTime(linkers, port);
             } else if (type.equals("reply")) {

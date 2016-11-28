@@ -4,15 +4,17 @@ import services.ServiceReply;
 import services.ServiceSum;
 import services.ServiceTime;
 import services.ServiceType;
+import util.ConfigReader;
 import util.MachineAddress;
 import util.MachineType;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The client knows the linkers and want to use a service
@@ -38,6 +40,8 @@ public class Client {
     // The connected service
     private MachineAddress service;
 
+    private int timeout = 500;
+
     public Client(final List<MachineAddress> linkers, final String type, final int port) throws SocketException {
         this.linkers = linkers;
 
@@ -54,16 +58,48 @@ public class Client {
         this.socket = new DatagramSocket(port);
     }
 
-    // TODO share code with Service
+    void handleNotRespondingService() throws IOException, ClassNotFoundException {
+        System.out.println("[i] Service down");
+
+        boolean isSent = false;
+        byte[] buff = new Message(
+                MessageType.SERVICE_DOWN,
+                MachineType.CLIENT,
+                this.service.toByteArray()
+        ).toByteArray();
+
+        // Send to linker
+        // Use a random linker in the list
+        while (!isSent) {
+            MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
+            DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+
+            packet.setData(buff);
+            socket.send(packet);
+
+            socket.setSoTimeout(timeout);
+
+            try {
+                socket.receive(packet);
+
+                Message message = Message.fromByteArray(buff);
+                if (message.getMessageType() == MessageType.ACK) {
+                    isSent = true;
+                }
+            } catch (SocketTimeoutException e) {
+                System.out.println("[i] Timeout, will try to contact an other linker");
+            }
+        }
+    }
+
+    // TODO add timeout
     boolean subscribeToLinker() throws IOException, ClassNotFoundException {
         byte[] buff = new byte[1024];
 
-        linkers.forEach(System.out::println);
-
         // Use a random linker in the list
-        MachineAddress linker = linkers.get((int) Math.random() * linkers.size());
+        MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
 
-        byte[] payload = new byte[] {
+        byte[] payload = new byte[]{
                 this.serviceType.getType()
         };
 
@@ -76,23 +112,31 @@ public class Client {
                 payload).toByteArray()
         );
 
+        System.out.println("[i] Request service to linker " + linker);
+
         socket.send(packet);
 
         // Reset packet
         packet = new DatagramPacket(buff, buff.length);
 
-        // TODO add timeout
+        socket.setSoTimeout(timeout);
 
         // Get response
         while (true) {
-            socket.receive(packet);
+            try {
+                socket.receive(packet);
+            } catch (SocketTimeoutException e) {
+                System.out.println("[i] Timeout, ask an other linker");
+
+                return subscribeToLinker();
+            }
 
             try {
                 Message message = Message.fromByteArray(buff);
 //                System.out.println(message);
 
                 if (message.getMessageType() == MessageType.RESPONSE) {
-                    System.out.println("Get service address");
+                    System.out.println("[i] Get service address");
 
                     service = MachineAddress.fromByteArray(message.getPayload());
 
@@ -100,8 +144,8 @@ public class Client {
 
                     return true;
                 }
-            } catch(IOException | ClassNotFoundException e) {
-                System.out.println("The packet is corrupt");
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("[i] The packet is corrupt");
             }
         }
     }
@@ -126,10 +170,15 @@ public class Client {
                     if (serviceType == ServiceType.SERVICE_SUM) {
                         String[] inputs = input.split(" ");
                         if (inputs.length >= 2) {
-                            buffSend = new byte[] {
-                                    (byte) Integer.parseInt(inputs[0]),
-                                    (byte) Integer.parseInt(inputs[1])
-                            };
+                            try {
+                                buffSend = new byte[]{
+                                        (byte) Integer.parseInt(inputs[0]),
+                                        (byte) Integer.parseInt(inputs[1])
+                                };
+                            } catch (NumberFormatException e) {
+                                System.out.println("[i] Invalid numbers");
+                                continue;
+                            }
                         }
                     } else if (serviceType == ServiceType.SERVICE_REPLY) {
                         buffSend = input.getBytes();
@@ -144,7 +193,19 @@ public class Client {
                     socket.send(packet);
 
                     packet = new DatagramPacket(buff, buff.length);
-                    socket.receive(packet);
+
+                    socket.setSoTimeout(timeout);
+
+                    try {
+                        socket.receive(packet);
+                    } catch (SocketTimeoutException e) {
+                        handleNotRespondingService();
+                        return;
+                    }
+
+                    socket.setSoTimeout(0);
+
+
                     Message message = Message.fromByteArray(buff);
 
                     if (message.getMessageType() == MessageType.RESPONSE) {
@@ -177,24 +238,22 @@ public class Client {
         System.out.println("- Client -");
 
         if (args.length < 2) {
-            System.out.println("Usage: java client <type> <port> <list of linkers>");
+            System.out.println("Usage: java client <type> <port>");
             return;
         }
 
-        List<MachineAddress> linkers = new ArrayList<>();
         final String type = args[0];
         final int port = Integer.parseInt(args[1]);
 
-        // 127.0.0.1:8080,127.0.0.1:8090
-        for (String info : args[2].split(",")) {
-            String[] token = info.split(":");
-            linkers.add(new MachineAddress(token[0], Integer.parseInt(token[1])));
-        }
-
         try {
+            List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt")); // TODO file name: shared const
+
             Client client = new Client(linkers, type, port);
-            if (client.subscribeToLinker()) {
-                client.keyListener();
+
+            while (true) {
+                if (client.subscribeToLinker()) {
+                    client.keyListener();
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
