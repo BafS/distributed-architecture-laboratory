@@ -1,10 +1,12 @@
 import messages.Message;
 import messages.MessageType;
 import services.ServiceType;
+import util.ConfigReader;
 import util.MachineAddress;
 import util.MachineType;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
@@ -290,14 +292,18 @@ public class Linker {
         System.out.println("- Linker -");
 
         if (args.length < 1) {
-            System.out.println("Usage: java linker <port>");
+            System.out.println("Usage: java linker <linker id>");
+            System.out.println("Note: <linker id> is the line number in linkers.txt");
             return;
         }
 
-        final int port = Integer.parseInt(args[0]);
+        final int id = Integer.parseInt(args[0]);
 
         try {
-            Linker linker = new Linker(port);
+            List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt"));
+            MachineAddress config = linkers.get(id);
+
+            Linker linker = new Linker(config.getPort());
             linker.listen();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();

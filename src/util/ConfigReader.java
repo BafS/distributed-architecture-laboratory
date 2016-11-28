@@ -7,19 +7,20 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ConfigReader {
-
-//    public static String read(String filename) {
-//        return read(new File(filename));
-//    }
-
-    public static List<String[]> read(File file) throws IOException {
-        //List<Machine> machines = new ArrayList<>();
-
+    public static List<MachineAddress> read(File file) throws IOException {
         if (file.exists()) {
-            List<String[]> machines = Files.lines(file.toPath()).map(s -> {
-                return s.split(":");
-                //return new Machine(i[0], new Integer(i[1]).intValue());
-            }).collect(Collectors.toList());
+            List<MachineAddress> machines = Files
+                    .lines(file.toPath())
+                    .map(s -> {
+                        String[] token = s.split(":", 2);
+                        if (token.length == 2) {
+                            return new MachineAddress(token[0], Integer.parseInt(token[1]));
+                        }
+
+                        return null;
+                    })
+                    .filter(m -> m != null)
+                    .collect(Collectors.toList());
 
             return machines;
         }
