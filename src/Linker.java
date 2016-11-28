@@ -7,7 +7,6 @@ import util.MachineType;
 
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
@@ -38,9 +37,9 @@ public class Linker {
 
     private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
 
-    public Linker(final int port, List<MachineAddress> linkers) throws SocketException {
+    public Linker(final int port, List<MachineAddress> otherLinkers) throws SocketException {
         socket = new DatagramSocket(port);
-        this.linkers = linkers;
+        this.linkers = otherLinkers;
     }
 
     /**
@@ -135,6 +134,11 @@ public class Linker {
 
                 System.out.println("[i] There is currently " + specificServices.size() + " services of " + serviceType.name());
 
+                if (specificServices.size() <= 0) {
+                    System.out.println("[i] No service available");
+                    return;
+                }
+
                 MachineAddress randomService = getAny(specificServices);
 
                 // Send the address of one of the specific service
@@ -154,20 +158,15 @@ public class Linker {
         byte[] buff = new byte[512];
 
         for (MachineAddress linker : linkers) {
-            if (!linker.getAddress().equals(InetAddress.getLocalHost())
-                    || linker.getPort() != socket.getLocalPort()) {
-                packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+            packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
 
-                packet.setData(new Message(
-                        MessageType.REMOVE_SERVICE,
-                        MachineType.LINKER,
-                        serviceDownMachineAddress.toString().getBytes()).toByteArray()
-                );
+            packet.setData(new Message(
+                    MessageType.REMOVE_SERVICE,
+                    MachineType.LINKER,
+                    serviceDownMachineAddress.toString().getBytes()).toByteArray()
+            );
 
-                socket.send(packet);
-            } else {
-                System.out.println("OURSELVE");
-            }
+            socket.send(packet);
         }
     }
 
@@ -214,22 +213,26 @@ public class Linker {
                     null
             ).toByteArray());
 
-            socket.setSoTimeout(1000);
             try {
+                System.out.println("[i] Send a PING to the service");
                 socket.send(tempPacket);
 
+                socket.setSoTimeout(1000);
                 socket.receive(tempPacket);
-
             } catch (SocketTimeoutException socketEx) {
                 // Service is down
-                System.out.println("Service is down indeed");
+                System.out.println("[i] Service is down indeed");
 
                 removeService(possibleDeadService);
 
                 warnOtherLinkers(possibleDeadService, message, packet);
+
+                socket.setSoTimeout(0);
             }
         } catch (ClassNotFoundException e) {
             System.out.println("[i] Error, invalid packet");
+
+            socket.setSoTimeout(0);
             return;
         }
     }
@@ -269,6 +272,7 @@ public class Linker {
         while (true) {
             // Reset packet before reuse
             packet = new DatagramPacket(buff, buff.length);
+            socket.setSoTimeout(0); // Be sure to listen for ever
             socket.receive(packet);
 
             // Continue, even if the packet is corrupt and cannot be unserialized
@@ -335,6 +339,7 @@ public class Linker {
         try {
             List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt"));
             MachineAddress config = linkers.get(id);
+            linkers.remove(id);
 
             Linker linker = new Linker(config.getPort(), linkers);
             linker.listen();
