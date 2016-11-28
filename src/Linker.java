@@ -34,26 +34,13 @@ public class Linker {
 
     private final DatagramSocket socket;
 
-    private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
-
     private List<MachineAddress> linkers;
 
-    public Linker(final int port) throws SocketException {
+    private Map<ServiceType, Set<MachineAddress>> services = new HashMap<>();
+
+    public Linker(final int port, List<MachineAddress> linkers) throws SocketException {
         socket = new DatagramSocket(port);
-        linkers = new LinkedList<>();
-
-        Properties properties = new Properties();
-        try {
-            properties.load(new FileInputStream("linkers.txt"));
-        } catch (IOException e) {
-
-        }
-
-        for (String key : properties.stringPropertyNames()) {
-            String value = properties.getProperty(key);
-            if (Integer.parseInt(value) != port) // A linker shouldn't have itself in it's list
-                linkers.add(new MachineAddress("localhost", Integer.parseInt(value)));
-        }
+        this.linkers = linkers;
     }
 
     /**
@@ -93,23 +80,22 @@ public class Linker {
         ).toByteArray());
 
         socket.send(packet);
-        // Send service to other linkers
-        byte[] buff = new byte[512];
-        for (MachineAddress linkerAddress : linkers) {
-            DatagramPacket linkerPacket = new DatagramPacket(buff, buff.length, linkerAddress.getAddress(), linkerAddress.getPort());
-            linkerPacket.setData(new Message(
-                    MessageType.REGISTER_SERVICE_FROM_LINKER,
-                    MachineType.LINKER,
-                    new String(serviceHost + servicePort).getBytes() // THIS IS WRONG, SHOULD SEND SERVICETYPE + SERVICEADDRESS
-            ).toByteArray()
-            );
-            socket.send(linkerPacket);
-        }
 
+        // Send service to other linkers
+//        byte[] buff = new byte[512];
+//        for (MachineAddress linkerAddress : linkers) {
+//            DatagramPacket linkerPacket = new DatagramPacket(buff, buff.length, linkerAddress.getAddress(), linkerAddress.getPort());
+//            linkerPacket.setData(new Message(
+//                    MessageType.REGISTER_SERVICE_FROM_LINKER,
+//                    MachineType.LINKER,
+//                    new String(serviceHost + servicePort).getBytes() // THIS IS WRONG, SHOULD SEND SERVICETYPE + SERVICEADDRESS
+//            ).toByteArray()
+//            );
+//            socket.send(linkerPacket);
+//        }
     }
 
-
-    private void addService(Message message, DatagramPacket packet) {
+    private void handleAddService(Message message, DatagramPacket packet) {
         ServiceType serviceType = ServiceType.values()[message.getPayload()[0]];
 
         // If the set is empty, we create the new set
@@ -125,6 +111,7 @@ public class Linker {
                         packet.getAddress().getHostAddress(),
                         packet.getPort()
                 ));
+
         printServices();
     }
 
@@ -160,6 +147,39 @@ public class Linker {
                 System.out.println("[i] Send service address to client");
                 socket.send(packet);
             }
+        }
+    }
+
+    private void warnOtherLinkers(MachineAddress serviceDownMachineAddress, Message message, DatagramPacket packet) throws IOException {
+        byte[] buff = new byte[512];
+
+        for (MachineAddress linker : linkers) {
+            if (!linker.getAddress().equals(InetAddress.getLocalHost())
+                    || linker.getPort() != socket.getLocalPort()) {
+                packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+
+                packet.setData(new Message(
+                        MessageType.REMOVE_SERVICE,
+                        MachineType.LINKER,
+                        serviceDownMachineAddress.toString().getBytes()).toByteArray()
+                );
+
+                socket.send(packet);
+            } else {
+                System.out.println("OURSELVE");
+            }
+        }
+    }
+
+    private void handleRemoveService(Message message, DatagramPacket packet) {
+        try {
+            MachineAddress service = MachineAddress.fromByteArray(message.getPayload());
+            removeService(service);
+            printServices();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
 
@@ -203,6 +223,9 @@ public class Linker {
             } catch (SocketTimeoutException socketEx) {
                 // Service is down
                 System.out.println("Service is down indeed");
+
+                removeService(possibleDeadService);
+
                 warnOtherLinkers(possibleDeadService, message, packet);
             }
         } catch (ClassNotFoundException e) {
@@ -211,30 +234,19 @@ public class Linker {
         }
     }
 
-    private void warnOtherLinkers(MachineAddress serviceDownMachineAddress, Message message, DatagramPacket packet) throws IOException {
-        byte[] buff = new byte[512];
-        for (MachineAddress linkerAddress : linkers) {
+    /**
+     * Remove the given service from the list
+     *
+     * @param deadService
+     */
+    private void removeService(MachineAddress deadService) {
+        services.forEach((a, list) -> {
+            if (list.contains(deadService)) {
+                list.remove(deadService);
+            }
+        });
 
-            packet = new DatagramPacket(buff, buff.length, linkerAddress.getAddress(), linkerAddress.getPort());
-
-            packet.setData(new Message(
-                    MessageType.REMOVE_SERVICE,
-                    MachineType.LINKER,
-                    serviceDownMachineAddress.toString().getBytes()).toByteArray()
-            );
-
-            socket.send(packet);
-
-        }
-    }
-
-    private void removeService(Message message, DatagramPacket packet) {
-        System.out.println("REMOVE SERVICE");
-        String mess = new String(message.getPayload());
-        String host = mess.split(":")[0].substring(1);
-        int port = new Integer(mess.split(":")[1]);
-        System.out.println("Removing service: " + host + ":" + port);
-        services.values().remove(new MachineAddress(host, port));
+        System.out.println("[i] Updated services list");
         printServices();
     }
 
@@ -277,7 +289,7 @@ public class Linker {
                     handleRegisterService(message, packet);
                     break;
                 case REGISTER_SERVICE_FROM_LINKER:
-                    addService(message, packet);
+                    handleAddService(message, packet);
                     break;
                 case REQUEST_SERVICE:
                     handleRequestService(message, packet);
@@ -286,7 +298,7 @@ public class Linker {
                     handleServiceDown(message, packet);
                     break;
                 case REMOVE_SERVICE:
-                    removeService(message, packet);
+                    handleRemoveService(message, packet);
                     break;
                 default:
                     System.out.println("> Got an unknown message !");
@@ -324,7 +336,7 @@ public class Linker {
             List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt"));
             MachineAddress config = linkers.get(id);
 
-            Linker linker = new Linker(config.getPort());
+            Linker linker = new Linker(config.getPort(), linkers);
             linker.listen();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
