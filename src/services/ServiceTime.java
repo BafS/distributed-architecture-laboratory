@@ -9,11 +9,17 @@ import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.List;
 
+/**
+ * This service give you the time of the machine
+ */
 public class ServiceTime extends Service {
     public ServiceTime(List<MachineAddress> linkers, final int port) throws SocketException {
         super(linkers, port);
     }
 
+    /**
+     * Get service response
+     */
     @Override
     ServiceType getServiceType() {
         return ServiceType.SERVICE_TIME;
@@ -31,6 +37,11 @@ public class ServiceTime extends Service {
         return buffer.array();
     }
 
+    /**
+     * Get response from an array of bytes
+     * @param response
+     * @return
+     */
     public static Long getResponseFromByteArray(byte[] response) {
         ByteBuffer bb = ByteBuffer.wrap(response);
         return bb.getLong();

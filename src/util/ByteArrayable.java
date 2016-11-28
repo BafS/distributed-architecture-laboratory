@@ -2,6 +2,11 @@ package util;
 
 import java.io.*;
 
+/**
+ * Trait
+ * to serialize an object to an array of bytes
+ * or to unserialize an array of bytes to an object
+ */
 public interface ByteArrayable {
     default byte[] toByteArray() throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {

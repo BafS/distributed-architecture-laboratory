@@ -1,5 +1,8 @@
 package messages;
 
+/**
+ * Type of possible messages
+ */
 public enum MessageType {
     PING,
     PONG,

@@ -50,9 +50,6 @@ public abstract class Service {
      * At initialization, service need to register itself to one of the linkers
      */
     boolean handshake() throws IOException {
-//        System.out.println("[i] Linkers:");
-//        linkers.forEach(System.out::println);
-
         // Use a random linker in the list
         MachineAddress linker = linkers.get((int) (Math.random() * linkers.size()));
         System.out.println("[i] Selected linker: " + linker);
@@ -68,7 +65,7 @@ public abstract class Service {
 
         socket.send(packet);
 
-        // Step 2 - Needs the ACK packet //
+        // Step 2 - Needs the ACK packet from a Linker //
 
         socket.setSoTimeout(timeout);
         Message message;
@@ -86,13 +83,14 @@ public abstract class Service {
                 return handshake();
             }
 
-            if (message.getMessageType() == MessageType.ACK) {
+            if (message.getMessageType() == MessageType.ACK
+                    && message.getMachineType() == MachineType.LINKER) {
                 System.out.println("[i] Handshake ok");
                 return true;
             }
         } catch (SocketTimeoutException | ClassNotFoundException e) {
             System.out.println("[i] Timeout (" + timeout + "ms)");
-            // Increment the timeout in order to not saturate the network (in case the network isn't 100% safe)
+            // Increment the timeout in order to not saturate the network
             timeout = Math.min((int) (timeout * 1.1), timeout * 10);
             return handshake();
         }

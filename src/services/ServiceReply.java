@@ -7,11 +7,17 @@ import java.net.DatagramPacket;
 import java.net.SocketException;
 import java.util.List;
 
+/**
+ * This service convert what you sent into L33T 5P34K
+ */
 public class ServiceReply extends Service {
     public ServiceReply(List<MachineAddress> linkers, final int port) throws SocketException {
         super(linkers, port);
     }
 
+    /**
+     * Get service response
+     */
     @Override
     byte[] getResponse(Message message, DatagramPacket packet) {
         // Reply in L33T 5P34K
@@ -30,6 +36,11 @@ public class ServiceReply extends Service {
         return ServiceType.SERVICE_REPLY;
     }
 
+    /**
+     * Get response from an array of bytes
+     * @param response
+     * @return
+     */
     public static String getResponseFromByteArray(byte[] response) {
         return new String(response);
     }

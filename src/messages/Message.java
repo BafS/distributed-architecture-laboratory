@@ -13,8 +13,20 @@ import java.util.Arrays;
 public class Message implements Serializable, ByteArrayable {
 
     private static final long serialVersionUID = 8073741970285089526L;
+
+    /**
+     * Type of message
+     */
     private MessageType messageType;
+
+    /**
+     * Type of machine (service, linker or client)
+     */
     private MachineType machineType; // sender
+
+    /**
+     * Message payload
+     */
     private byte[] payload;
 
     public Message(MessageType messageType, MachineType machineType, byte[] message) {
@@ -27,9 +39,9 @@ public class Message implements Serializable, ByteArrayable {
         return payload;
     }
 
-//    public MachineType getMachineType() {
-//        return machineType;
-//    }
+    public MachineType getMachineType() {
+        return machineType;
+    }
 
     public MessageType getMessageType() {
         return messageType;

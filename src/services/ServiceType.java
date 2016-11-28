@@ -1,7 +1,9 @@
 package services;
 
+/**
+ * All the services types
+ */
 public enum ServiceType {
-
     SERVICE_TIME,
     SERVICE_SUM,
     SERVICE_REPLY;
