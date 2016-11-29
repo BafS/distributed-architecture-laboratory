@@ -30,8 +30,6 @@ public enum MachineType {
             }
         }
 
-        System.out.println("FAIL");
-
         return null;
     }
 

@@ -20,27 +20,17 @@ public class Message implements Serializable, ByteArrayable {
     private MessageType messageType;
 
     /**
-     * Type of machine (service, linker or client)
-     */
-    private MachineType machineType; // sender
-
-    /**
      * Message payload
      */
     private byte[] payload;
 
-    public Message(MessageType messageType, MachineType machineType, byte[] message) {
+    public Message(MessageType messageType, byte[] message) {
         this.messageType = messageType;
-        this.machineType = machineType;
         this.payload = message;
     }
 
     public byte[] getPayload() {
         return payload;
-    }
-
-    public MachineType getMachineType() {
-        return machineType;
     }
 
     public MessageType getMessageType() {
@@ -55,7 +45,6 @@ public class Message implements Serializable, ByteArrayable {
     public String toString() {
         return "Message{" +
                 "messageType=" + messageType +
-                ", machineType=" + machineType +
                 ", payload=" + Arrays.toString(payload) +
                 '}';
     }

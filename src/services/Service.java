@@ -4,7 +4,6 @@ import messages.Message;
 import messages.MessageType;
 import util.ConfigReader;
 import util.MachineAddress;
-import util.MachineType;
 
 import java.io.EOFException;
 import java.io.File;
@@ -72,7 +71,6 @@ public abstract class Service {
         DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
         packet.setData(new Message(
                 MessageType.REGISTER_SERVICE,
-                MachineType.SERVICE,
                 new byte[]{ this.getServiceType().getType() }
         ).toByteArray());
 
@@ -96,8 +94,7 @@ public abstract class Service {
                 return handshake();
             }
 
-            if (message.getMessageType() == MessageType.ACK
-                    && message.getMachineType() == MachineType.LINKER) {
+            if (message.getMessageType() == MessageType.ACK) {
                 System.out.println("[i] Handshake ok");
                 return true;
             }
@@ -124,7 +121,6 @@ public abstract class Service {
 
         message = new Message(
                 MessageType.RESPONSE,
-                MachineType.SERVICE,
                 buffRes
         );
 
@@ -146,7 +142,6 @@ public abstract class Service {
     private void handlePing(Message message, DatagramPacket packet) throws IOException {
         message = new Message(
                 MessageType.PONG,
-                MachineType.SERVICE,
                 null
         );
 
@@ -187,7 +182,7 @@ public abstract class Service {
 
                     handleRequest(message, packet);
                     break;
-                case PONG:
+                case PING:
                     handlePing(message, packet);
                     break;
                 default:

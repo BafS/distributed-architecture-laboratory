@@ -89,7 +89,6 @@ public class Client {
         boolean isSent = false;
         byte[] buff = new Message(
                 MessageType.SERVICE_DOWN,
-                MachineType.CLIENT,
                 this.service.toByteArray()
         ).toByteArray();
 
@@ -139,7 +138,6 @@ public class Client {
 
         packet.setData(new Message(
                 MessageType.REQUEST_SERVICE,
-                MachineType.CLIENT,
                 payload).toByteArray()
         );
 
@@ -230,7 +228,6 @@ public class Client {
 
                     packet.setData(new Message(
                             MessageType.REQUEST,
-                            MachineType.CLIENT,
                             buffSend
                     ).toByteArray());
 

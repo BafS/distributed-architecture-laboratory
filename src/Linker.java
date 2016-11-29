@@ -3,7 +3,6 @@ import messages.MessageType;
 import services.ServiceType;
 import util.ConfigReader;
 import util.MachineAddress;
-import util.MachineType;
 
 import java.io.*;
 import java.net.*;
@@ -87,7 +86,6 @@ public class Linker {
         // Send an ACK to show that the linker is alive
         packet.setData(new Message(
                 MessageType.ACK,
-                MachineType.LINKER,
                 null
         ).toByteArray());
 
@@ -106,12 +104,14 @@ public class Linker {
         // Send service to other linkers
         sendToOtherLinker(
                 new Message(
-                        MessageType.REGISTER_SERVICE,
-                        MachineType.LINKER,
+                        MessageType.REGISTER_SERVICE_FROM_LINKER,
                         outputStream.toByteArray()
                 ),
                 packet
         );
+
+        System.out.println("[i] Services:");
+        printServices();
     }
 
     /**
@@ -138,6 +138,9 @@ public class Linker {
                     new byte[]{ serviceType.getType() }
             );
             handleRegisterService(message, packet);
+
+            System.out.println("[i] Services:");
+            printServices();
         } catch (ClassNotFoundException e) {
             System.out.println("[i] Message malformed");
         }
@@ -159,7 +162,6 @@ public class Linker {
         if (!services.containsKey(serviceType)) {
             Set<MachineAddress> set = new HashSet<>();
             services.put(serviceType, set);
-
         }
 
         // We add the machine to the set
@@ -200,7 +202,6 @@ public class Linker {
                 // Send the address of one of the specific service
                 packet.setData(new Message(
                         MessageType.RESPONSE,
-                        MachineType.LINKER,
                         randomService.toByteArray()
                 ).toByteArray());
 
@@ -222,7 +223,6 @@ public class Linker {
         sendToOtherLinker(
                 new Message(
                     MessageType.REMOVE_SERVICE,
-                    MachineType.LINKER,
                         serviceDownMachineAddress.toByteArray()
                 ),
                 packet
@@ -280,7 +280,6 @@ public class Linker {
 
             message = new Message(
                     MessageType.LINKERS_TABLE,
-                    MachineType.LINKER,
                     baos.toByteArray()
             );
 
@@ -308,7 +307,6 @@ public class Linker {
                 DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
                 packet.setData(new Message(
                         MessageType.REQUEST_LINKERS_TABLE,
-                        MachineType.LINKER,
                         null
                 ).toByteArray());
 
@@ -372,7 +370,6 @@ public class Linker {
         // Send an ACK to the client to show that we received the request
         packet.setData(new Message(
                 MessageType.ACK,
-                MachineType.LINKER,
                 null
         ).toByteArray());
         socket.send(packet);
@@ -386,7 +383,6 @@ public class Linker {
 
             tempPacket.setData(new Message(
                     MessageType.PING,
-                    MachineType.LINKER,
                     null
             ).toByteArray());
 
@@ -401,9 +397,7 @@ public class Linker {
                 System.out.println("[i] Service is down indeed");
 
                 removeService(possibleDeadService);
-
                 warnOtherLinkers(possibleDeadService, message, packet);
-
                 socket.setSoTimeout(0);
             }
         } catch (ClassNotFoundException e) {
@@ -467,15 +461,10 @@ public class Linker {
 
             switch (message.getMessageType()) {
                 case REGISTER_SERVICE:
-                    if (message.getMachineType() == MachineType.LINKER) {
-                        handleLinkerRegisterService(message, packet);
-                    } else {
-                        handleFirstRegisterService(message, packet);
-                    }
-
-                    System.out.println("[i] Services:");
-                    printServices();
-
+                    handleFirstRegisterService(message, packet);
+                    break;
+                case REGISTER_SERVICE_FROM_LINKER:
+                    handleLinkerRegisterService(message, packet);
                     break;
                 case REQUEST_SERVICE:
                     handleRequestService(message, packet);
