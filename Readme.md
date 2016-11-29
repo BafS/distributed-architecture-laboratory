@@ -37,3 +37,15 @@ port: Port of service
 `java Client <type> <port>`
 
 Same specifics as with services.
+
+# NEEDED:
+
+linkers.txt file in the root directory with the following format:
+
+127.0.0.1:9090
+127.0.0.1:9091
+127.0.0.1:9092
+      . 
+      .
+      .
+127.0.0.1:`<last_port>`
