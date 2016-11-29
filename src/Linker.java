@@ -13,6 +13,8 @@ import java.net.*;
 import java.util.*;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * Linkers are the bridge between clients and services
  * Linker addresses are known by all clients and services.
  * <p>

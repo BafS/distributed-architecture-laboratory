@@ -10,6 +10,8 @@ import java.util.Calendar;
 import java.util.List;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * This service give you the time of the machine
  */
 public class ServiceTime extends Service {

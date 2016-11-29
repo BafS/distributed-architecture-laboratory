@@ -1,6 +1,8 @@
 package services;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * All the services types
  */
 public enum ServiceType {

@@ -8,6 +8,8 @@ import java.net.SocketException;
 import java.util.List;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * This service convert what you sent into L33T 5P34K
  */
 public class ServiceReply extends Service {

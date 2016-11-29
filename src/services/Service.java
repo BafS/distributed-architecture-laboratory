@@ -16,6 +16,8 @@ import java.net.SocketTimeoutException;
 import java.util.List;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * At initialization, a service will register itself to a random linker (sending him the host,
  * port and type of the service).
  * Then, the service listens for new messages and replies.

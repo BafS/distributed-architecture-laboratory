@@ -3,6 +3,8 @@ package util;
 import java.io.*;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * Trait
  * to serialize an object to an array of bytes
  * or to unserialize an array of bytes to an object

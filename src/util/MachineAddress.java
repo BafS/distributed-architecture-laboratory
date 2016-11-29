@@ -3,7 +3,12 @@ package util;
 import java.io.*;
 import java.net.InetSocketAddress;
 
-// Wrapper
+/**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
+ *
+ * Wrapper for machine addresses
+ */
 public class MachineAddress extends InetSocketAddress implements Serializable, ByteArrayable {
 
     private static final long serialVersionUID = -2525112949161709437L;

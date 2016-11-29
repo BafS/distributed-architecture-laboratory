@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * The client knows the linkers and wants to use a service
  *
  * To use a service, the client firstly asks one of the linkers (chosen at random) to give him the host and

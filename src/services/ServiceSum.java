@@ -8,6 +8,8 @@ import java.net.SocketException;
 import java.util.List;
 
 /**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
  * This service sum two numbers
  */
 public class ServiceSum extends Service {

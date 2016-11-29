@@ -1,5 +1,11 @@
 package util;
 
+/**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
+ *
+ * Enum specifying the machine from which a message is sent
+ */
 public enum MachineType {
 
     CLIENT((byte) 0x00),

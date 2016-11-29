@@ -6,6 +6,12 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * @author Henrik Akesson
+ * @author Fabien Salathe
+ *
+ * Reads, parses and interprets the configuration file given
+ */
 public class ConfigReader {
     public static List<MachineAddress> read(File file) throws IOException {
         if (file.exists()) {
