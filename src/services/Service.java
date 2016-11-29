@@ -26,7 +26,18 @@ import java.util.List;
  * Handshake:
  * Service --(register)--> Linker
  *         <----(ack)-----
+ *
+ * Service <--(request)--- Client
+ *         ---(response)->
+ *
+ * Launching Services:
+ *    `java Service <type> <port>`
+ *    type: Type of service
+ *        - "reply"
+ *        - "time"
+ *        - "sum"
  */
+
 public abstract class Service {
 
     /**

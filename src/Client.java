@@ -25,6 +25,21 @@ import java.util.Scanner;
  * 1. Ask a random linker the address of a specific service [ACK_SERVICE-TYPE]
  * 2a. if OK [ACK_SERVICE | message]
  * 2b. if Error -> goto 1.
+ *
+ * Launching clients:
+ *  `java Client <type> <port>`
+ *  type: Type of service
+ *      - "reply"
+ *      - "time"
+ *      - "sum"
+ *
+ *  client ---(request_service)--> linker
+ *         <--(service_address)---
+ *
+ *  client -------(request)------> service
+ *         <------(response)------
+ *
+ *  If no response is received after the timeout, the client notifies a linker then restarts it's process
  */
 public class Client {
 
@@ -266,6 +281,7 @@ public class Client {
 
         if (args.length < 2) {
             System.out.println("Usage: java client <type> <port>");
+            System.out.println("<type> can be 'sum', 'reply' or 'time'");
             return;
         }
 

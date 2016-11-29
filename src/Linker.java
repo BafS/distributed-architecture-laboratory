@@ -29,6 +29,27 @@ import java.util.*;
  * NOT_RESPONDING_SERVICE
  * - Checks if the service is dead and if so removes the service from the list
  * - If true: Send his updated table to the other linkers
+ *
+ * Launching linkers:
+ *   `java Linker <linker id>`
+ * The linker id is the line number in linker.txt, associating a specific id to a port
+ *
+ * SERVICE REGISTRATION
+ * linker <--(register)-- service
+ *        -----(ack)---->
+ *
+ * CLIENT REQUEST
+ * linker <--(request)--- client
+ *        ---(response)->
+ *
+ * SERVICE TIMEOUT
+ * linker <--(service_down)--- client
+ *        -------(ping)------> service
+ *        --(remove_service)-> linker 1
+ *                  .             .
+ *                  .             .
+ *                  .             .
+ *        --(remove_service)-> linker n
  */
 public class Linker {
 
@@ -167,7 +188,7 @@ public class Linker {
 
                 Set<MachineAddress> specificServices = services.get(serviceType);
 
-                System.out.println("[i] There is currently " + specificServices.size() + " services of " + serviceType.name());
+                System.out.println("[i] There are currently " + specificServices.size() + " services of type: " + serviceType.name());
 
                 if (specificServices.size() <= 0) {
                     System.out.println("[i] No service available");
