@@ -5,10 +5,7 @@ import util.ConfigReader;
 import util.MachineAddress;
 import util.MachineType;
 
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.util.*;
 
@@ -107,7 +104,7 @@ public class Linker {
         outputStream.write( newService.toByteArray() );
 
         // Send service to other linkers
-        sendForEachOtherLinker(
+        sendToOtherLinker(
                 new Message(
                         MessageType.REGISTER_SERVICE,
                         MachineType.LINKER,
@@ -213,8 +210,16 @@ public class Linker {
         }
     }
 
+    /**
+     * Warn all other linkers that the given service is down
+     *
+     * @param serviceDownMachineAddress
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
     private void warnOtherLinkers(MachineAddress serviceDownMachineAddress, Message message, DatagramPacket packet) throws IOException {
-        sendForEachOtherLinker(
+        sendToOtherLinker(
                 new Message(
                     MessageType.REMOVE_SERVICE,
                     MachineType.LINKER,
@@ -224,7 +229,14 @@ public class Linker {
         );
     }
 
-    private void sendForEachOtherLinker(Message message, DatagramPacket packet) throws IOException {
+    /**
+     * Helper to send a specific message to all linkers (except itself)
+     *
+     * @param message
+     * @param packet
+     * @throws IOException
+     */
+    private void sendToOtherLinker(Message message, DatagramPacket packet) throws IOException {
         byte[] buff = new byte[512];
 
         for (MachineAddress linker : linkers) {
@@ -236,6 +248,12 @@ public class Linker {
         }
     }
 
+    /**
+     * Handle remove service message from a linker, no need to check
+     *
+     * @param message
+     * @param packet
+     */
     private void handleRemoveService(Message message, DatagramPacket packet) {
         try {
             MachineAddress service = MachineAddress.fromByteArray(message.getPayload());
@@ -245,6 +263,99 @@ public class Linker {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Handle the request table message and send all services to the linker
+     *
+     * @param message
+     * @param packet
+     */
+    private void handleRequestTable(Message message, DatagramPacket packet) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream out = new ObjectOutputStream(baos);
+            out.writeObject(services);
+
+            message = new Message(
+                    MessageType.LINKERS_TABLE,
+                    MachineType.LINKER,
+                    baos.toByteArray()
+            );
+
+            packet.setData(message.toByteArray());
+
+            System.out.println("[i] Send service address to client");
+            socket.send(packet);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Ask every linker for the services table until an answer is received.
+     * If not, this linker is the first one to be launched.
+     */
+    @SuppressWarnings("unchecked")
+    private void askTableService() {
+        byte[] buff = new byte[512];
+
+        for (MachineAddress linker : linkers) {
+            try {
+
+                // Ask for the table of services
+                DatagramPacket packet = new DatagramPacket(buff, buff.length, linker.getAddress(), linker.getPort());
+                packet.setData(new Message(
+                        MessageType.REQUEST_LINKERS_TABLE,
+                        MachineType.LINKER,
+                        null
+                ).toByteArray());
+
+                socket.send(packet);
+
+                socket.setSoTimeout(1000);
+                try {
+
+                    byte[] buff2 = new byte[2048];
+                    packet = new DatagramPacket(buff2, buff2.length, linker.getAddress(), linker.getPort());
+                    socket.receive(packet);
+
+                    try {
+                        System.out.println(buff.toString());
+                        System.out.println(buff.length);
+
+                        Message message = Message.fromByteArray(buff2);
+
+                        if (message.getMessageType() == MessageType.LINKERS_TABLE) {
+                            System.out.println("[i] Got services table");
+
+                            try (ByteArrayInputStream bais = new ByteArrayInputStream(message.getPayload())) {
+                                try (ObjectInputStream ois = new ObjectInputStream(bais)) {
+                                    Object o1 = ois.readObject();
+                                    ois.close();
+                                    this.services = (Map<ServiceType, Set<MachineAddress>>) o1;
+
+                                    System.out.println("[i] Updated list");
+                                    this.printServices();
+                                    return;
+                                }
+                            }
+                        }
+
+                    } catch (ClassNotFoundException e) {
+                        System.out.println("[i] Malformed packet, ask the next linker");
+                        continue;
+                    }
+
+                } catch (SocketTimeoutException e) {
+                    System.out.println("[i] Timeout, ask the next linker");
+                    continue;
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -375,6 +486,9 @@ public class Linker {
                 case REMOVE_SERVICE:
                     handleRemoveService(message, packet);
                     break;
+                case REQUEST_LINKERS_TABLE:
+                    handleRequestTable(message, packet);
+                    break;
                 default:
                     System.out.println("> Got an unknown message !");
             }
@@ -422,7 +536,10 @@ public class Linker {
             linkers.remove(id);
 
             Linker linker = new Linker(config.getPort(), linkers);
+
+            linker.askTableService();
             linker.listen();
+
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }

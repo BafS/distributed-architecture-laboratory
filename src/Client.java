@@ -199,6 +199,7 @@ public class Client {
                 System.out.println("Your input is : " + input);
                 if ("quit".equals(input) || "q".equals(input)) {
                     System.out.println("Exit client");
+                    socket.close();
                     exit = true;
                 } else {
                     //
@@ -274,7 +275,6 @@ public class Client {
             }
         }
 
-        socket.close();
         keyboard.close();
     }
 
@@ -293,9 +293,8 @@ public class Client {
         try {
             List<MachineAddress> linkers = ConfigReader.read(new File("linkers.txt")); // TODO file name: shared const
 
+            Client client = new Client(linkers, type, port);
             while (true) {
-                Client client = new Client(linkers, type, port);
-
                 if (client.subscribeToLinker()) {
                     client.keyListener();
                 }
