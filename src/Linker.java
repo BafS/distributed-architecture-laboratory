@@ -258,7 +258,6 @@ public class Linker {
         try {
             MachineAddress service = MachineAddress.fromByteArray(message.getPayload());
             removeService(service);
-            printServices();
         } catch (IOException e) {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {

@@ -1,7 +1,6 @@
 package messages;
 
 import util.ByteArrayable;
-import util.MachineType;
 
 import java.io.*;
 import java.util.Arrays;

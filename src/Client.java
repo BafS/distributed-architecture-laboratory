@@ -6,7 +6,6 @@ import services.ServiceTime;
 import services.ServiceType;
 import util.ConfigReader;
 import util.MachineAddress;
-import util.MachineType;
 
 import java.io.File;
 import java.io.IOException;
